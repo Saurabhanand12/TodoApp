@@ -8,32 +8,23 @@ import {
     ShoppingBag,
     Briefcase,
     Plus,
-    Settings
+    Settings,
+    Pencil
 } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
-    const [name, setName] = React.useState('John Doe');
-    const [isEditing, setIsEditing] = React.useState(false);
-
-    React.useEffect(() => {
-        const savedName = localStorage.getItem('userName');
-        if (savedName) setName(savedName);
-    }, []);
-
-    const handleSave = () => {
-        localStorage.setItem('userName', name);
-        setIsEditing(false);
-    };
+const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
+    const displayName = username || 'User';
+    const initial = displayName.charAt(0).toUpperCase();
 
     return (
         <div className="w-64 h-full text-gray-300 p-6 flex flex-col">
-            {/* Header */}
+            {/* App Header */}
             <div className="flex items-center gap-3 mb-10 px-2">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/20">
                     <User size={20} />
                 </div>
                 <div>
-                    <h2 className="text-white font-bold text-lg tracking-tight text-3xl italic">TodoDolt</h2>
+                    <h2 className="text-white font-bold text-3xl italic">TodoDolt</h2>
                     <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Premium</p>
                 </div>
             </div>
@@ -86,39 +77,29 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 <span>New List</span>
             </button>
 
-
             {/* User Profile */}
             <div className="mt-auto pt-6 border-t border-white/5">
-                <div className="flex items-center gap-3 px-3 py-3 hover:bg-white/5 rounded-xl transition-all group cursor-pointer border border-transparent hover:border-white/5">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center ring-2 ring-transparent group-hover:ring-blue-500/50 transition-all">
-                        <span className="text-xs font-bold text-white">{name.charAt(0)}</span>
+                <div className="flex items-center gap-3 px-3 py-3 hover:bg-white/5 rounded-xl transition-all group border border-transparent hover:border-white/5">
+                    {/* Avatar */}
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center ring-2 ring-transparent group-hover:ring-blue-500/50 transition-all flex-shrink-0">
+                        <span className="text-xs font-bold text-white">{initial}</span>
                     </div>
+                    {/* Name & label */}
                     <div className="flex-1 min-w-0">
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                onBlur={handleSave}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                                className="bg-black/50 text-white text-sm px-2 py-1 rounded w-full outline-none border border-blue-500/50"
-                                autoFocus
-                            />
-                        ) : (
-                            <h4
-                                className="text-sm font-medium text-white truncate"
-                                onClick={() => setIsEditing(true)}
-                                title="Click to edit name"
-                            >
-                                {name}
-                            </h4>
-                        )}
+                        <h4 className="text-sm font-semibold text-white truncate">@{displayName}</h4>
                         <p className="text-[10px] text-gray-500 truncate">Pro Account</p>
                     </div>
-                    <Settings size={16} className="text-gray-500 group-hover:text-white transition-colors opacity-0 group-hover:opacity-100" onClick={() => setIsEditing(!isEditing)} />
+                    {/* Edit */}
+                    <button
+                        id="edit-username-btn"
+                        onClick={onEditUsername}
+                        title="Change username"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-white/10"
+                    >
+                        <Pencil size={14} className="text-gray-400 hover:text-white transition-colors" />
+                    </button>
                 </div>
             </div>
-
         </div>
     );
 };
@@ -137,7 +118,6 @@ const NavItem = ({ icon, label, active = false, count, onClick, color }) => {
                 }`}
         >
             {active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full"></div>}
-
             <div className="flex items-center gap-3 z-10">
                 <span className={`transition-colors duration-200 ${active ? color : 'text-gray-500 group-hover:text-gray-300'}`}>
                     {icon}

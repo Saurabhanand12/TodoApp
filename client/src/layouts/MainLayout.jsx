@@ -1,8 +1,7 @@
-
 import React from 'react';
 import Sidebar from './Sidebar';
 
-const MainLayout = ({ children, activeTab, setActiveTab, userName }) => {
+const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsername }) => {
     return (
         <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-gray-200 font-sans relative selection:bg-purple-500/30">
 
@@ -15,7 +14,12 @@ const MainLayout = ({ children, activeTab, setActiveTab, userName }) => {
 
             {/* Glass Sidebar Container */}
             <div className="relative z-20 h-full backdrop-blur-xl bg-black/40 border-r border-white/5">
-                <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+                <Sidebar
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    username={username}
+                    onEditUsername={onEditUsername}
+                />
             </div>
 
             <main className="flex-1 h-full overflow-hidden flex flex-col relative z-10">
@@ -24,15 +28,17 @@ const MainLayout = ({ children, activeTab, setActiveTab, userName }) => {
                 <div className="w-full p-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-30 flex justify-between items-center sticky top-0">
                     <div>
                         <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                            {userName}
+                            Welcome, <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">@{username || 'User'}</span>
                         </h1>
                         <p className="text-xs text-gray-500 font-medium tracking-wider uppercase mt-1">
                             Daily Dashboard
                         </p>
                     </div>
 
-                    <div className="text-sm font-medium text-gray-400 bg-white/5 px-4 py-2 rounded-full border border-white/5 shadow-sm">
-                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    <div className="flex items-center gap-3">
+                        <div className="text-sm font-medium text-gray-400 bg-white/5 px-4 py-2 rounded-full border border-white/5 shadow-sm">
+                            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </div>
                     </div>
                 </div>
 
@@ -47,4 +53,3 @@ const MainLayout = ({ children, activeTab, setActiveTab, userName }) => {
 };
 
 export default MainLayout;
-

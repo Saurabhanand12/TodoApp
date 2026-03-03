@@ -17,6 +17,12 @@ const todoSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    username: {
+        type: String,
+        required: true,
+        trim: true,
+        lowercase: true
+    },
     createdAt: {
         type: Date,
         default: Date.now

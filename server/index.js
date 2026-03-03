@@ -12,12 +12,15 @@ app.use(express.json());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
-const todoRouter = require('./routes/todos');
-app.use('/todos', todoRouter);
+const usersRouter = require('./routes/users');
+const tasksRouter = require('./routes/tasks');
+
+app.use('/api/user', usersRouter);
+app.use('/api/tasks', tasksRouter);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
