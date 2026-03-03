@@ -33,7 +33,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                     <User size={20} />
                 </div>
                 <div>
-                    <h2 className="text-white font-bold text-lg tracking-tight">DoIt</h2>
+                    <h2 className="text-white font-bold text-lg tracking-tight text-3xl italic">TodoDolt</h2>
                     <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Premium</p>
                 </div>
             </div>
