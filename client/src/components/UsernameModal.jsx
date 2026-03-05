@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Sparkles } from 'lucide-react';
 import axios from 'axios';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const UsernameModal = ({ onUsernameSet }) => {
     const [inputValue, setInputValue] = useState('');
     const [error, setError] = useState('');
@@ -102,7 +103,7 @@ const UsernameModal = ({ onUsernameSet }) => {
                     </button>
                 </form>
 
-                <p className="text-center text-xl text-gray-600 mt-6">
+                <p className="text-center text-xs text-gray-600 mt-6">
                     Just enter your username.
                 </p>
             </div>
