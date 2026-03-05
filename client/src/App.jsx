@@ -6,7 +6,7 @@ import TaskCard from './layouts/TaskCard';
 import UsernameModal from './components/UsernameModal';
 import './index.css';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5173';
 
 function App() {
   // ─── Username state ───────────────────────────────────────────────
