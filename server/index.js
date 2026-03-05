@@ -6,15 +6,12 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
-
-// In server/index.js
 const corsOptions = {
     origin: ['http://localhost:5173', 'https://todo-app-frontend-eta-ten.vercel.app'],
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
+app.use(express.json());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -33,5 +30,11 @@ app.get('/', (req, res) => {
     res.json({ message: 'Todo API is running!' });
 });
 
-// Export for Vercel (no app.listen)
+// Start server locally (not on Vercel)
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+}
+
+// Export for Vercel serverless
 module.exports = app;
