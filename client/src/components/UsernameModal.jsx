@@ -26,8 +26,8 @@ const UsernameModal = ({ onUsernameSet }) => {
         setLoading(true);
         setError('');
         try {
-            await axios.post('http://localhost:5000/api/user', { username: trimmed });
-            localStorage.setItem('username', trimmed.toLowerCase());
+            await await axios.post(`${API}/api/user`);
+            localStorage.setItem('username');
             onUsernameSet(trimmed.toLowerCase());
         } catch (err) {
             setError(err.response?.data?.error || 'Something went wrong. Try again.');
@@ -102,8 +102,8 @@ const UsernameModal = ({ onUsernameSet }) => {
                     </button>
                 </form>
 
-                <p className="text-center text-xs text-gray-600 mt-6">
-                    Already have an account? Just enter your username.
+                <p className="text-center text-xl text-gray-600 mt-6">
+                    Just enter your username.
                 </p>
             </div>
         </div>
