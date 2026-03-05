@@ -27,8 +27,8 @@ const UsernameModal = ({ onUsernameSet }) => {
         setLoading(true);
         setError('');
         try {
-            await await axios.post(`${API}/api/user`);
-            localStorage.setItem('username');
+            await axios.post(`${API}/api/user`, { username: trimmed });
+            localStorage.setItem('username', trimmed.toLowerCase());
             onUsernameSet(trimmed.toLowerCase());
         } catch (err) {
             setError(err.response?.data?.error || 'Something went wrong. Try again.');
