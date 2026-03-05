@@ -9,6 +9,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// In server/index.js
+const corsOptions = {
+    origin: ['http://localhost:5173', 'https://todo-app-frontend-eta-ten.vercel.app'],
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('Connected to MongoDB'))
