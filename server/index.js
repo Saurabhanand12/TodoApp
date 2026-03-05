@@ -1,6 +1,6 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
+const dbConnect = require('./lib/db');
 require('dotenv').config();
 
 const app = express();
@@ -13,10 +13,16 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch(err => console.error('MongoDB connection error:', err));
+// Ensure DB is connected before every request (critical for Vercel serverless)
+app.use(async (req, res, next) => {
+    try {
+        await dbConnect();
+        next();
+    } catch (err) {
+        console.error('DB connection failed:', err);
+        res.status(500).json({ error: 'Database connection failed' });
+    }
+});
 
 // Routes
 const usersRouter = require('./routes/users');
