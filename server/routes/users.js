@@ -10,8 +10,8 @@ const generateTokenAndSetCookie = (res, user) => {
 
     res.cookie('auth_token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production' || true, // Better to always use secure if possible, or at least in prod
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 };

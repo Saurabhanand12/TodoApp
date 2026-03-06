@@ -16,17 +16,19 @@ const AdminFeedback = () => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const fetchFeedback = async () => {
+        setLoading(true);
+        try {
+            const res = await axios.get(`${API}/api/feedback`);
+            setFeedbacks(res.data);
+        } catch (err) {
+            console.error("Error fetching feedback:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchFeedback = async () => {
-            try {
-                const res = await axios.get(`${API}/api/feedback`);
-                setFeedbacks(res.data);
-            } catch (err) {
-                console.error("Error fetching feedback:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchFeedback();
     }, []);
 
@@ -53,9 +55,22 @@ const AdminFeedback = () => {
                     <p className="text-sm text-gray-400 mt-1">Review bug reports and feature requests from users</p>
                 </div>
 
-                <div className="ml-auto bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-2 flex items-center gap-3">
-                    <span className="text-gray-400 text-sm">Total Submissions:</span>
-                    <span className="text-white font-bold text-xl">{feedbacks.length}</span>
+                <div className="ml-auto flex items-center gap-4">
+                    <button
+                        onClick={fetchFeedback}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-gray-300 hover:text-white transition-all group"
+                        title="Refresh Feedback"
+                    >
+                        <div className={`transition-transform duration-500 ${loading ? 'animate-spin' : 'group-hover:rotate-180'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 16h5v5" /></svg>
+                        </div>
+                        <span className="text-sm font-medium">Refresh</span>
+                    </button>
+
+                    <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-2 flex items-center gap-3">
+                        <span className="text-gray-400 text-sm">Total:</span>
+                        <span className="text-white font-bold text-xl">{feedbacks.length}</span>
+                    </div>
                 </div>
             </div>
 

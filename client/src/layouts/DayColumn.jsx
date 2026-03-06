@@ -9,7 +9,7 @@ const CATEGORIES = [
     { value: 'grocery', label: 'Grocery', icon: <ShoppingCart size={14} />, color: 'text-emerald-400' },
 ];
 
-const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, hideHeader = false, defaultCategory = 'personal' }) => {
+const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, onUpdateTask, hideHeader = false, defaultCategory = 'personal' }) => {
     const [isAdding, setIsAdding] = React.useState(false);
     const [newTaskText, setNewTaskText] = React.useState('');
     const [selectedCategory, setSelectedCategory] = React.useState(defaultCategory);
@@ -53,6 +53,7 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
                         onToggleComplete={onToggleComplete}
                         onToggleImportant={onToggleImportant}
                         onDelete={onDelete}
+                        onUpdateTask={onUpdateTask}
                     />
                 ))}
 

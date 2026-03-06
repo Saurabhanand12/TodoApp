@@ -1,5 +1,5 @@
-import React from 'react';
-import { Star, Trash2, User, Briefcase, ShoppingCart } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Star, Trash2, User, Briefcase, ShoppingCart, Edit3, Check, X } from 'lucide-react';
 
 const CATEGORY_META = {
     personal: { label: 'Personal', icon: <User size={11} />, color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
@@ -7,8 +7,32 @@ const CATEGORY_META = {
     grocery: { label: 'Grocery', icon: <ShoppingCart size={11} />, color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
 };
 
-const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete }) => {
+const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdateTask }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editText, setEditText] = useState(task.text);
+    const inputRef = useRef(null);
     const catMeta = CATEGORY_META[task.category] || CATEGORY_META.personal;
+
+    useEffect(() => {
+        if (isEditing) {
+            inputRef.current?.focus();
+        }
+    }, [isEditing]);
+
+    const handleSave = () => {
+        if (editText.trim() && editText !== task.text) {
+            onUpdateTask(task._id, { text: editText.trim() });
+        }
+        setIsEditing(false);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') handleSave();
+        if (e.key === 'Escape') {
+            setEditText(task.text);
+            setIsEditing(false);
+        }
+    };
 
     return (
         <div className="group bg-[#1a1a1a]/60 backdrop-blur-sm p-4 rounded-xl border border-white/5 hover:border-white/10 hover:bg-[#1a1a1a]/80 transition-all duration-300 flex items-start gap-4 mb-3 shadow-lg shadow-black/10 relative hover:shadow-black/20 hover:scale-[1.005]">
@@ -23,9 +47,26 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete }) => {
             </button>
 
             <div className="flex-1 min-w-0 pt-0.5">
-                <p className={`text-[15px] font-medium leading-normal break-words transition-colors duration-300 ${task.completed ? 'line-through text-gray-500 decoration-gray-600' : 'text-gray-200'}`}>
-                    {task.text}
-                </p>
+                {isEditing ? (
+                    <div className="flex items-center gap-2">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onBlur={handleSave}
+                            className="flex-1 bg-white/5 border border-blue-500/50 rounded px-2 py-1 text-[15px] text-gray-200 outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                    </div>
+                ) : (
+                    <p
+                        onDoubleClick={() => setIsEditing(true)}
+                        className={`text-[15px] font-medium leading-normal break-words transition-colors duration-300 cursor-pointer ${task.completed ? 'line-through text-gray-500 decoration-gray-600' : 'text-gray-200'}`}
+                    >
+                        {task.text}
+                    </p>
+                )}
                 <div className="flex items-center gap-3 mt-2">
                     <span className={`flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${catMeta.color}`}>
                         {catMeta.icon}
@@ -48,6 +89,13 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete }) => {
                     <Star size={18} fill={task.isImportant ? "currentColor" : "none"} />
                 </button>
                 <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-blue-400 transition-colors"
+                    title="Edit Task"
+                >
+                    <Edit3 size={18} />
+                </button>
+                <button
                     onClick={() => onDelete(task._id)}
                     className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors"
                     title="Delete Task"
@@ -56,7 +104,7 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete }) => {
                 </button>
             </div>
 
-            {task.isImportant && (
+            {task.isImportant && !isEditing && (
                 <div className="absolute top-4 right-4 group-hover:hidden transition-opacity">
                     <Star size={18} className="text-yellow-400 fill-yellow-400 drop-shadow-lg" />
                 </div>

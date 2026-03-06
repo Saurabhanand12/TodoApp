@@ -25,7 +25,7 @@ const CATEGORY_TABS = [
 
 function App() {
   // ─── Authentication state ──────────────────────────────────────────
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(localStorage.getItem('todo_user') || '');
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -35,8 +35,12 @@ function App() {
     const checkAuth = async () => {
       try {
         const res = await axios.get(`${API}/api/user/me`);
-        setUsername(res.data.username);
+        const confirmedUser = res.data.username;
+        setUsername(confirmedUser);
+        localStorage.setItem('todo_user', confirmedUser);
       } catch (err) {
+        setUsername('');
+        localStorage.removeItem('todo_user');
         setShowModal(true);
       } finally {
         setIsInitializing(false);
@@ -85,6 +89,7 @@ function App() {
   // ─── Handle authentication set from modal ─────────────────────────
   const handleAuthSuccess = useCallback((newUsername) => {
     setUsername(newUsername);
+    localStorage.setItem('todo_user', newUsername);
     setTasks([]);
     setShowModal(false);
     fetchTasks(newUsername);
@@ -95,6 +100,7 @@ function App() {
     try {
       await axios.post(`${API}/api/user/logout`);
       setUsername('');
+      localStorage.removeItem('todo_user');
       setTasks([]);
       setShowModal(true);
     } catch (err) {
@@ -116,6 +122,7 @@ function App() {
 
       const updatedName = res.data.username;
       setUsername(updatedName);
+      localStorage.setItem('todo_user', updatedName);
 
       // Update tasks locally
       setTasks(prev => prev.map(t => ({ ...t, username: updatedName })));
@@ -212,6 +219,18 @@ function App() {
       if (username) fetchTasks(username);
     }
   }, [tasks, username, fetchTasks]);
+
+  const handleUpdateTask = useCallback(async (id, updates) => {
+    try {
+      // Optimistic update
+      setTasks(prev => prev.map(t => (t._id === id ? { ...t, ...updates } : t)));
+      const res = await axios.put(`${API}/api/tasks/${id}`, updates);
+      setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+    } catch (err) {
+      console.error('Error updating task:', err);
+      if (username) fetchTasks(username);
+    }
+  }, [username, fetchTasks]);
 
   const handleUndo = useCallback(() => {
     if (!undoQueue) return;
@@ -350,6 +369,7 @@ function App() {
                         onToggleComplete={toggleComplete}
                         onToggleImportant={toggleImportant}
                         onDelete={deleteTodo}
+                        onUpdateTask={handleUpdateTask}
                         hideHeader={true}
                         defaultCategory={dayFilter !== 'all' ? dayFilter : 'personal'}
                       />
@@ -426,6 +446,7 @@ function App() {
                         onToggleComplete={toggleComplete}
                         onToggleImportant={toggleImportant}
                         onDelete={deleteTodo}
+                        onUpdateTask={handleUpdateTask}
                         hideHeader={true}
                         defaultCategory={tab.filter !== 'all' ? tab.filter : 'personal'}
                       />
