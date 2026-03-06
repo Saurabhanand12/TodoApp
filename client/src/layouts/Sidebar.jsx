@@ -11,7 +11,7 @@ import {
     Pencil
 } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
+const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername, counts }) => {
     const displayName = username || 'User';
     const initial = displayName.charAt(0).toUpperCase();
 
@@ -57,6 +57,7 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
                     active={activeTab === 'all-tasks'}
                     onClick={() => setActiveTab('all-tasks')}
                     color="text-green-400"
+                    count={counts?.all > 0 ? counts.all : null}
                 />
 
                 <div className="pt-8">
@@ -67,6 +68,7 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
                         active={activeTab === 'personal'}
                         onClick={() => setActiveTab('personal')}
                         color="text-blue-400"
+                        count={counts?.personal > 0 ? counts.personal : null}
                     />
                     <NavItem
                         icon={<Briefcase size={18} />}
@@ -74,6 +76,7 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
                         active={activeTab === 'work'}
                         onClick={() => setActiveTab('work')}
                         color="text-orange-400"
+                        count={counts?.work > 0 ? counts.work : null}
                     />
                     <NavItem
                         icon={<ShoppingCart size={18} />}
@@ -81,6 +84,7 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
                         active={activeTab === 'grocery'}
                         onClick={() => setActiveTab('grocery')}
                         color="text-emerald-400"
+                        count={counts?.grocery > 0 ? counts.grocery : null}
                     />
                 </div>
             </nav>

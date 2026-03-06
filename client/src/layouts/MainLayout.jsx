@@ -1,7 +1,7 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 
-const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsername }) => {
+const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsername, counts }) => {
     return (
         <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-gray-200 font-sans relative selection:bg-purple-500/30">
 
@@ -19,6 +19,7 @@ const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsernam
                     setActiveTab={setActiveTab}
                     username={username}
                     onEditUsername={onEditUsername}
+                    counts={counts}
                 />
             </div>
 

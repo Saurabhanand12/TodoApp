@@ -13,7 +13,7 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Category metadata (single source of truth)
 const CATEGORY_TABS = [
-  { id: 'all-tasks', label: 'All Tasks', icon: <CheckSquare size={22} />, color: 'text-green-400', filter: null },
+  { id: 'all-tasks', label: 'All Tasks', icon: <CheckSquare size={22} />, color: 'text-green-400', filter: 'all' },
   { id: 'personal', label: 'Personal', icon: <User size={22} />, color: 'text-blue-400', filter: 'personal' },
   { id: 'work', label: 'Work', icon: <Briefcase size={22} />, color: 'text-orange-400', filter: 'work' },
   { id: 'grocery', label: 'Grocery List', icon: <ShoppingCart size={22} />, color: 'text-emerald-400', filter: 'grocery' },
@@ -196,8 +196,18 @@ function App() {
   }, [myDayTasks, dayFilter]);
 
   const getFilteredTasks = useCallback((categoryFilter) =>
-    categoryFilter ? tasks.filter(t => t.category === categoryFilter) : tasks
+    categoryFilter && categoryFilter !== 'all' ? tasks.filter(t => t.category === categoryFilter) : tasks
     , [tasks]);
+
+  // Calculate notification counts
+  const counts = useMemo(() => {
+    return {
+      all: tasks.filter(t => !t.completed).length,
+      personal: tasks.filter(t => (!t.category || t.category === 'personal') && !t.completed).length,
+      work: tasks.filter(t => t.category === 'work' && !t.completed).length,
+      grocery: tasks.filter(t => t.category === 'grocery' && !t.completed).length,
+    };
+  }, [tasks]);
 
   // ─── Render ───────────────────────────────────────────────────────
   return (
@@ -211,6 +221,7 @@ function App() {
         setActiveTab={setActiveTab}
         username={username}
         onEditUsername={handleEditUsername}
+        counts={counts}
       >
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -347,7 +358,7 @@ function App() {
                     onToggleImportant={toggleImportant}
                     onDelete={deleteTodo}
                     hideHeader={true}
-                    defaultCategory={tab.filter || 'personal'}
+                    defaultCategory={tab.filter !== 'all' ? tab.filter : 'personal'}
                   />
                 </div>
               )
