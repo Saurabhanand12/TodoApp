@@ -33,4 +33,16 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/feedback/check/:username — check if user already submitted
+router.get('/check/:username', async (req, res) => {
+    try {
+        const feedback = await Feedback.findOne({
+            username: req.params.username.toLowerCase()
+        });
+        res.json({ hasSubmitted: !!feedback });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

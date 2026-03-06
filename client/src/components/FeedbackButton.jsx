@@ -10,6 +10,7 @@ const FeedbackButton = ({ username }) => {
     const [selectedRating, setSelectedRating] = useState(null);
     const [status, setStatus] = useState('idle'); // idle, rating, loading, success, error
     const [errorMsg, setErrorMsg] = useState('');
+    const [hasAlreadySubmitted, setHasAlreadySubmitted] = useState(false);
 
     const RATING_FACES = [
         { value: 1, emoji: '😠', label: 'Terrible' },
@@ -19,8 +20,27 @@ const FeedbackButton = ({ username }) => {
         { value: 5, emoji: '🤩', label: 'Awesome' }
     ];
 
+    // Filter out restricted names from the persistent check if needed, 
+    // but usually we want to check for everyone
+    useEffect(() => {
+        const checkFeedbackStatus = async () => {
+            if (!username) return;
+            try {
+                const res = await axios.get(`${API}/api/feedback/check/${username}`);
+                if (res.data.hasSubmitted) {
+                    setHasAlreadySubmitted(true);
+                }
+            } catch (err) {
+                console.error('Error checking feedback status:', err);
+            }
+        };
+        checkFeedbackStatus();
+    }, [username]);
+
     // Trigger feedback prompt after 1 minute (once per session)
     useEffect(() => {
+        if (hasAlreadySubmitted) return;
+
         const hasPrompted = sessionStorage.getItem('feedback_prompted');
         if (!hasPrompted) {
             const timer = setTimeout(() => {
@@ -29,7 +49,7 @@ const FeedbackButton = ({ username }) => {
             }, 60000); // 1 minute
             return () => clearTimeout(timer);
         }
-    }, []);
+    }, [hasAlreadySubmitted]);
 
     const handleFirstStep = (e) => {
         e.preventDefault();
@@ -55,6 +75,7 @@ const FeedbackButton = ({ username }) => {
             setStatus('success');
             setTimeout(() => {
                 setIsOpen(false);
+                setHasAlreadySubmitted(true); // Hide persistently now
                 setTimeout(() => {
                     setMessage('');
                     setSelectedRating(null);
@@ -67,6 +88,8 @@ const FeedbackButton = ({ username }) => {
             setErrorMsg(err.response?.data?.error || 'Failed to send feedback. Please try again.');
         }
     };
+
+    if (hasAlreadySubmitted) return null;
 
     return (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">

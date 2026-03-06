@@ -8,6 +8,7 @@ import UndoToast from './components/UndoToast';
 import FeedbackButton from './components/FeedbackButton';
 import AdminFeedback from './components/AdminFeedback';
 import AuthModal from './components/AuthModal';
+import UsernameEditModal from './components/UsernameEditModal';
 import { User, Briefcase, ShoppingCart, CheckSquare } from 'lucide-react';
 import './index.css';
 
@@ -26,6 +27,7 @@ function App() {
   // ─── Authentication state ──────────────────────────────────────────
   const [username, setUsername] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
   // Check auth on mount
@@ -100,10 +102,31 @@ function App() {
     }
   }, []);
 
-  // ─── Handle edit username (now logout for safety) ──────────────────
+  // ─── Handle edit username ──────────────────
   const handleEditUsername = useCallback(() => {
-    handleLogout();
-  }, [handleLogout]);
+    setShowEditModal(true);
+  }, []);
+
+  const performUsernameUpdate = async (newName) => {
+    try {
+      setLoading(true);
+      const res = await axios.put(`${API}/api/user/change-username`, {
+        newUsername: newName
+      });
+
+      const updatedName = res.data.username;
+      setUsername(updatedName);
+
+      // Update tasks locally
+      setTasks(prev => prev.map(t => ({ ...t, username: updatedName })));
+      setShowEditModal(false);
+      // Removed alert for cleaner UX, the modal success state handles it or we can add a toast later
+    } catch (err) {
+      throw err; // Let the modal handle the error display
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ─── Task operations ──────────────────────────────────────────────
   const handleAddTask = useCallback(async (text, category, date) => {
@@ -246,6 +269,13 @@ function App() {
   return (
     <>
       {showModal && <AuthModal onAuthSuccess={handleAuthSuccess} />}
+      {showEditModal && (
+        <UsernameEditModal
+          currentUsername={username}
+          onSave={performUsernameUpdate}
+          onCancel={() => setShowEditModal(false)}
+        />
+      )}
 
       {isInitializing ? (
         <div className="fixed inset-0 bg-[#0a0a0a] flex items-center justify-center z-[200]">
@@ -411,8 +441,8 @@ function App() {
               </div>
             )}
 
-            {/* Floating Feedback Button - Admin only */}
-            {username === 'admin_saurabhanand88' && <FeedbackButton username={username} />}
+            {/* Floating Feedback Button - All users */}
+            {username && <FeedbackButton username={username} />}
           </MainLayout>
         </>
       )}

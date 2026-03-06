@@ -65,41 +65,57 @@ const AuthModal = ({ onAuthSuccess }) => {
                     </div>
 
                     {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest ml-1">Username</label>
-                            <div className="relative group">
-                                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
-                                <input
-                                    type="text"
-                                    value={username}
-                                    onChange={(e) => { setUsername(e.target.value); setError(''); }}
-                                    placeholder="your_handle"
-                                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-12 py-3.5 text-white placeholder-gray-600 text-sm outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all"
-                                    autoFocus
-                                />
-                            </div>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="relative group">
+                            <input
+                                type="text"
+                                id="username"
+                                value={username}
+                                onChange={(e) => { setUsername(e.target.value); setError(''); }}
+                                placeholder="Username"
+                                className="peer w-full bg-white/[0.03] border border-white/10 rounded-2xl px-12 py-5 text-white placeholder-transparent text-sm outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                                autoFocus
+                            />
+                            <label
+                                htmlFor="username"
+                                className="absolute left-12 top-1/2 -translate-y-1/2 text-gray-500 text-sm transition-all 
+                                peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm 
+                                peer-focus:top-3.5 peer-focus:text-[10px] peer-focus:text-blue-500 
+                                peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-[10px] 
+                                peer-[:not(:placeholder-shown)]:text-blue-500 pointer-events-none font-bold uppercase tracking-widest"
+                            >
+                                Username
+                            </label>
+                            <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 peer-focus:text-blue-500 transition-colors" />
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest ml-1">Password</label>
-                            <div className="relative group">
-                                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-500 transition-colors" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                                    placeholder="••••••••"
-                                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-12 py-3.5 text-white placeholder-gray-600 text-sm outline-none focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 transition-all"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            </div>
+                        <div className="relative group">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                id="password"
+                                value={password}
+                                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                placeholder="Password"
+                                className="peer w-full bg-white/[0.03] border border-white/10 rounded-2xl px-12 py-5 text-white placeholder-transparent text-sm outline-none focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 transition-all"
+                            />
+                            <label
+                                htmlFor="password"
+                                className="absolute left-12 top-1/2 -translate-y-1/2 text-gray-500 text-sm transition-all 
+                                peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-sm 
+                                peer-focus:top-3.5 peer-focus:text-[10px] peer-focus:text-purple-500 
+                                peer-[:not(:placeholder-shown)]:top-3.5 peer-[:not(:placeholder-shown)]:text-[10px] 
+                                peer-[:not(:placeholder-shown)]:text-purple-500 pointer-events-none font-bold uppercase tracking-widest"
+                            >
+                                Password
+                            </label>
+                            <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 peer-focus:text-purple-500 transition-colors" />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
 
                         {error && (
@@ -112,8 +128,9 @@ const AuthModal = ({ onAuthSuccess }) => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-xl shadow-blue-900/40 disabled:opacity-50 disabled:scale-100 active:scale-95 flex items-center justify-center gap-2 group"
+                            className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-xl shadow-blue-900/40 disabled:opacity-50 disabled:scale-100 active:scale-95 flex items-center justify-center gap-2 group overflow-hidden relative"
                         >
+                            <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-[-20deg]" />
                             {loading ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
