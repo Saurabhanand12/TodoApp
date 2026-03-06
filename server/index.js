@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const dbConnect = require('./lib/db');
 require('dotenv').config();
 
@@ -8,9 +9,11 @@ const app = express();
 // Middleware
 const corsOptions = {
     origin: ['http://localhost:5173', 'https://todo-app-frontend-eta-ten.vercel.app'],
+    credentials: true,
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json());
 
 // Ensure DB is connected before every request (critical for Vercel serverless)
