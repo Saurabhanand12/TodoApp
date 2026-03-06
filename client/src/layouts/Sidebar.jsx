@@ -5,9 +5,8 @@ import {
     CheckSquare,
     Star,
     User,
-    ShoppingBag,
+    ShoppingCart,
     Briefcase,
-    Plus,
     Settings,
     Pencil
 } from 'lucide-react';
@@ -59,26 +58,35 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
                     onClick={() => setActiveTab('all-tasks')}
                     color="text-green-400"
                 />
-                <NavItem icon={<User size={20} />} label="Assigned to me" />
 
-                <div className="pt-8 pb-2">
+                <div className="pt-8">
                     <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-4 mb-4">My Lists</h3>
-                    <NavItem icon={<User size={18} />} label="Personal" />
-                    <NavItem icon={<Briefcase size={18} />} label="Work" />
-                    <NavItem icon={<ShoppingBag size={18} />} label="Grocery List" />
+                    <NavItem
+                        icon={<User size={18} />}
+                        label="Personal"
+                        active={activeTab === 'personal'}
+                        onClick={() => setActiveTab('personal')}
+                        color="text-blue-400"
+                    />
+                    <NavItem
+                        icon={<Briefcase size={18} />}
+                        label="Work"
+                        active={activeTab === 'work'}
+                        onClick={() => setActiveTab('work')}
+                        color="text-orange-400"
+                    />
+                    <NavItem
+                        icon={<ShoppingCart size={18} />}
+                        label="Grocery List"
+                        active={activeTab === 'grocery'}
+                        onClick={() => setActiveTab('grocery')}
+                        color="text-emerald-400"
+                    />
                 </div>
             </nav>
 
-            {/* Add List Button */}
-            <button className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-white/5 rounded-xl transition-all w-full text-left mt-auto mb-6 text-gray-400 hover:text-white group">
-                <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center group-hover:bg-blue-600/20 group-hover:text-blue-400 transition-colors">
-                    <Plus size={18} />
-                </div>
-                <span>New List</span>
-            </button>
-
             {/* User Profile */}
-            <div className="mt-auto pt-6 border-t border-white/5">
+            <div className="mt-auto pt-2 border-t border-white/5">
                 <div className="flex items-center gap-3 px-3 py-3 hover:bg-white/5 rounded-xl transition-all group border border-transparent hover:border-white/5">
                     {/* Avatar */}
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center ring-2 ring-transparent group-hover:ring-blue-500/50 transition-all flex-shrink-0">
@@ -86,7 +94,7 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername }) => {
                     </div>
                     {/* Name & label */}
                     <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-white truncate">@{displayName}</h4>
+                        <h4 className="text-xm font-semibold text-white truncate">@{displayName}</h4>
                         <p className="text-[10px] text-gray-500 truncate">Pro Account</p>
                     </div>
                     {/* Edit */}

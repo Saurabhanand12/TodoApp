@@ -1,15 +1,27 @@
 
 import React from 'react';
 import TaskCard from './TaskCard';
-import { Plus } from 'lucide-react';
+import { Plus, User, Briefcase, ShoppingCart } from 'lucide-react';
 
-const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, hideHeader = false }) => {
+const CATEGORIES = [
+    { value: 'personal', label: 'Personal', icon: <User size={14} />, color: 'text-blue-400' },
+    { value: 'work', label: 'Work', icon: <Briefcase size={14} />, color: 'text-orange-400' },
+    { value: 'grocery', label: 'Grocery', icon: <ShoppingCart size={14} />, color: 'text-emerald-400' },
+];
+
+const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, hideHeader = false, defaultCategory = 'personal' }) => {
     const [isAdding, setIsAdding] = React.useState(false);
     const [newTaskText, setNewTaskText] = React.useState('');
+    const [selectedCategory, setSelectedCategory] = React.useState(defaultCategory);
+
+    // Reset category when defaultCategory changes (tab switch)
+    React.useEffect(() => {
+        setSelectedCategory(defaultCategory);
+    }, [defaultCategory]);
 
     const handleAdd = () => {
         if (newTaskText.trim()) {
-            onAddTask(newTaskText);
+            onAddTask(newTaskText, selectedCategory);
             setNewTaskText('');
             setIsAdding(false);
         }
@@ -55,6 +67,22 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
                             className="w-full bg-transparent text-white placeholder-gray-500 outline-none text-sm mb-3"
                             autoFocus
                         />
+                        {/* Category Selector */}
+                        <div className="flex items-center gap-2 mb-3">
+                            {CATEGORIES.map(cat => (
+                                <button
+                                    key={cat.value}
+                                    onClick={() => setSelectedCategory(cat.value)}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all duration-200 ${selectedCategory === cat.value
+                                        ? `${cat.color} border-current bg-white/10`
+                                        : 'text-gray-500 border-white/10 hover:border-white/20 hover:text-gray-300'
+                                        }`}
+                                >
+                                    {cat.icon}
+                                    {cat.label}
+                                </button>
+                            ))}
+                        </div>
                         <div className="flex justify-end gap-2">
                             <button
                                 onClick={() => setIsAdding(false)}
@@ -86,4 +114,4 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
     );
 };
 
-export default DayColumn;
+export default React.memo(DayColumn);

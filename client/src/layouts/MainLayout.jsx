@@ -6,10 +6,10 @@ const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsernam
         <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-gray-200 font-sans relative selection:bg-purple-500/30">
 
             {/* Dynamic Background */}
-            <div className="fixed inset-0 z-0">
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] animate-pulse-slow"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] animate-pulse-slow delay-1000"></div>
-                <div className="absolute top-[40%] left-[40%] w-[30%] h-[30%] bg-indigo-900/10 rounded-full blur-[100px] animate-ping-slow"></div>
+            <div className="fixed inset-0 z-0 overflow-hidden bg-slate-950">
+                <div className="absolute top-[-20%] right-[10%] w-[60%] h-[60%] bg-emerald-700/30 rounded-full blur-[150px] animate-pulse"></div>
+                <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-teal-800/40 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+                <div className="absolute top-[30%] left-[20%] w-[40%] h-[40%] bg-indigo-900/40 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '3s' }}></div>
             </div>
 
             {/* Glass Sidebar Container */}

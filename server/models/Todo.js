@@ -23,6 +23,11 @@ const todoSchema = new mongoose.Schema({
         trim: true,
         lowercase: true
     },
+    category: {
+        type: String,
+        enum: ['personal', 'work', 'grocery'],
+        default: 'personal'
+    },
     createdAt: {
         type: Date,
         default: Date.now

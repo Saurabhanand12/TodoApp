@@ -1,7 +1,15 @@
 import React from 'react';
-import { Star, Trash2 } from 'lucide-react';
+import { Star, Trash2, User, Briefcase, ShoppingCart } from 'lucide-react';
+
+const CATEGORY_META = {
+    personal: { label: 'Personal', icon: <User size={11} />, color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
+    work: { label: 'Work', icon: <Briefcase size={11} />, color: 'text-orange-400 bg-orange-400/10 border-orange-400/20' },
+    grocery: { label: 'Grocery', icon: <ShoppingCart size={11} />, color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
+};
 
 const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete }) => {
+    const catMeta = CATEGORY_META[task.category] || CATEGORY_META.personal;
+
     return (
         <div className="group bg-[#1a1a1a]/60 backdrop-blur-sm p-4 rounded-xl border border-white/5 hover:border-white/10 hover:bg-[#1a1a1a]/80 transition-all duration-300 flex items-start gap-4 mb-3 shadow-lg shadow-black/10 relative hover:shadow-black/20 hover:scale-[1.005]">
             <button
@@ -19,8 +27,9 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete }) => {
                     {task.text}
                 </p>
                 <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold bg-white/5 px-2 py-0.5 rounded border border-white/5">
-                        Personal
+                    <span className={`flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${catMeta.color}`}>
+                        {catMeta.icon}
+                        {catMeta.label}
                     </span>
                     {task.due_date && (
                         <span className="text-[11px] text-gray-500">
@@ -56,4 +65,4 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete }) => {
     );
 };
 
-export default TaskCard;
+export default React.memo(TaskCard);

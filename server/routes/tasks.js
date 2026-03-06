@@ -6,7 +6,7 @@ router.get('/:username', async (req, res) => {
     try {
         const todos = await Todo.find({
             username: req.params.username.toLowerCase()
-        }).sort({ createdAt: -1 });
+        }).select('-__v').sort({ createdAt: -1 }).lean();
         res.json(todos);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -16,14 +16,15 @@ router.get('/:username', async (req, res) => {
 // POST /api/tasks — add a new task with username
 router.post('/', async (req, res) => {
     try {
-        const { text, username, due_date } = req.body;
+        const { text, username, due_date, category } = req.body;
         if (!text || !username) {
             return res.status(400).json({ error: 'text and username are required' });
         }
         const newTodo = new Todo({
             text,
             username: username.trim().toLowerCase(),
-            due_date: due_date ? new Date(due_date) : new Date()
+            due_date: due_date ? new Date(due_date) : new Date(),
+            category: category || 'personal'
         });
         const savedTodo = await newTodo.save();
         res.json(savedTodo);

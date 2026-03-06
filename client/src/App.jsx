@@ -1,12 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import MainLayout from './layouts/MainLayout';
 import DayColumn from './layouts/DayColumn';
 import TaskCard from './layouts/TaskCard';
 import UsernameModal from './components/UsernameModal';
+import CategoryFilterDropdown from './components/CategoryFilterDropdown';
+import UndoToast from './components/UndoToast';
+import { User, Briefcase, ShoppingCart, CheckSquare } from 'lucide-react';
 import './index.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// Category metadata (single source of truth)
+const CATEGORY_TABS = [
+  { id: 'all-tasks', label: 'All Tasks', icon: <CheckSquare size={22} />, color: 'text-green-400', filter: null },
+  { id: 'personal', label: 'Personal', icon: <User size={22} />, color: 'text-blue-400', filter: 'personal' },
+  { id: 'work', label: 'Work', icon: <Briefcase size={22} />, color: 'text-orange-400', filter: 'work' },
+  { id: 'grocery', label: 'Grocery List', icon: <ShoppingCart size={22} />, color: 'text-emerald-400', filter: 'grocery' },
+];
 
 function App() {
   // ─── Username state ───────────────────────────────────────────────
@@ -22,6 +33,12 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('my-day');
+
+  // Filter state for My Day
+  const [dayFilter, setDayFilter] = useState('all');
+
+  // Undo state
+  const [undoQueue, setUndoQueue] = useState(null); // { task, timeoutId }
 
   // ─── Fetch tasks by username ──────────────────────────────────────
   const fetchTasks = useCallback(async (user) => {
@@ -43,86 +60,152 @@ function App() {
   }, [username, fetchTasks]);
 
   // ─── Handle username set from modal ──────────────────────────────
-  const handleUsernameSet = (newUsername) => {
+  const handleUsernameSet = useCallback((newUsername) => {
     setUsername(newUsername);
     setTasks([]);
     setShowModal(false);
     fetchTasks(newUsername);
-  };
+  }, [fetchTasks]);
 
   // ─── Handle edit username (re-open modal) ─────────────────────────
-  const handleEditUsername = () => {
+  const handleEditUsername = useCallback(() => {
     setShowModal(true);
-  };
+  }, []);
 
   // ─── Task operations ──────────────────────────────────────────────
-  const handleAddTask = async (text, date) => {
+  const handleAddTask = useCallback(async (text, category, date) => {
     if (!text || !username) return;
     try {
       const res = await axios.post(`${API}/api/tasks`, {
         text,
         username,
+        category: category || 'personal',
         due_date: date ? new Date(date) : new Date()
       });
       setTasks(prev => [res.data, ...prev]);
     } catch (err) {
       console.error('Error adding task:', err);
     }
-  };
+  }, [username]);
 
-  const deleteTodo = async (id) => {
-    try {
-      await axios.delete(`${API}/api/tasks/${id}`);
-      setTasks(prev => prev.filter(t => t._id !== id));
-    } catch (err) {
-      console.error('Error deleting task:', err);
-    }
-  };
-
-  const toggleComplete = async (id) => {
+  const toggleImportant = useCallback(async (id) => {
     const task = tasks.find(t => t._id === id);
+    if (!task) return;
     try {
-      const res = await axios.put(`${API}/api/tasks/${id}`, { completed: !task.completed });
-      setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
-    } catch (err) {
-      console.error('Error toggling complete:', err);
-    }
-  };
-
-  const toggleImportant = async (id) => {
-    const task = tasks.find(t => t._id === id);
-    try {
+      // Optimistic
+      setTasks(prev => prev.map(t => (t._id === id ? { ...t, isImportant: !t.isImportant } : t)));
       const res = await axios.put(`${API}/api/tasks/${id}`, { isImportant: !task.isImportant });
       setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
     } catch (err) {
       console.error('Error toggling important:', err);
+      if (username) fetchTasks(username);
     }
-  };
+  }, [tasks, username, fetchTasks]);
 
-  // ─── Date helpers ─────────────────────────────────────────────────
+  // ─── Undo, Delete & Complete logic ────────────────────────────────────────
+  const commitDelete = useCallback(async (id) => {
+    try {
+      await axios.delete(`${API}/api/tasks/${id}`);
+    } catch (err) {
+      console.error('Error committing delete:', err);
+      if (username) fetchTasks(username);
+    }
+    setUndoQueue(null);
+  }, [username, fetchTasks]);
+
+  const processPendingUndo = useCallback(() => {
+    if (!undoQueue) return;
+    clearTimeout(undoQueue.timeoutId);
+    if (undoQueue.action === 'delete') {
+      commitDelete(undoQueue.task._id);
+    }
+  }, [undoQueue, commitDelete]);
+
+  const deleteTodo = useCallback((id) => {
+    const task = tasks.find(t => t._id === id);
+    if (!task) return;
+
+    if (undoQueue && undoQueue.task._id !== id) {
+      processPendingUndo();
+    }
+
+    // Optimistic update
+    setTasks(prev => prev.filter(t => t._id !== id));
+
+    const timeoutId = setTimeout(() => {
+      commitDelete(id);
+    }, 8000);
+
+    setUndoQueue({ task, timeoutId, action: 'delete' });
+  }, [tasks, undoQueue, processPendingUndo, commitDelete]);
+
+  const toggleComplete = useCallback(async (id) => {
+    const task = tasks.find(t => t._id === id);
+    if (!task) return;
+
+    const newCompletedState = !task.completed;
+
+    // Optimistic update
+    setTasks(prev => prev.map(t => (t._id === id ? { ...t, completed: newCompletedState } : t)));
+
+    try {
+      const res = await axios.put(`${API}/api/tasks/${id}`, { completed: newCompletedState });
+      setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+    } catch (err) {
+      console.error('Error committing complete:', err);
+      if (username) fetchTasks(username);
+    }
+  }, [tasks, username, fetchTasks]);
+
+  const handleUndo = useCallback(() => {
+    if (!undoQueue) return;
+    clearTimeout(undoQueue.timeoutId);
+
+    if (undoQueue.action === 'delete') {
+      setTasks(prev => {
+        const newTasks = [...prev, undoQueue.task];
+        return newTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      });
+    }
+
+    setUndoQueue(null);
+  }, [undoQueue]);
+
+  // ─── Date & View helpers ──────────────────────────────────────────
   const normalizeDate = (date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   };
 
-  const today = new Date();
-  const todayNormalized = normalizeDate(today);
+  const today = useMemo(() => new Date(), []);
 
-  const getDayTasks = (dateOffset) => {
+  const getDayTasks = useCallback((dateOffset) => {
     const targetDate = new Date();
     targetDate.setDate(today.getDate() + dateOffset);
     const targetNormalized = normalizeDate(targetDate);
     return tasks.filter(task => normalizeDate(task.due_date) === targetNormalized);
-  };
+  }, [tasks, today]);
+
+  const myDayTasks = useMemo(() => getDayTasks(0), [getDayTasks]);
+
+  // Apply category filter to My Day view
+  const myDayFilteredTasks = useMemo(() => {
+    if (dayFilter === 'all') return myDayTasks;
+    return myDayTasks.filter(t => t.category === dayFilter);
+  }, [myDayTasks, dayFilter]);
+
+  const getFilteredTasks = useCallback((categoryFilter) =>
+    categoryFilter ? tasks.filter(t => t.category === categoryFilter) : tasks
+    , [tasks]);
 
   // ─── Render ───────────────────────────────────────────────────────
   return (
     <>
-      {/* Username Modal — shown on first visit or when editing */}
       {showModal && <UsernameModal onUsernameSet={handleUsernameSet} />}
 
-      {/* App shell — always rendered so modal overlays it nicely */}
+      <UndoToast undoTask={undoQueue?.task} undoAction={undoQueue?.action} onUndo={handleUndo} />
+
       <MainLayout
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -143,13 +226,20 @@ function App() {
             {activeTab === 'my-day' && (
               <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full pt-4">
 
+                {/* Category Filter */}
+                <CategoryFilterDropdown
+                  options={CATEGORY_TABS}
+                  activeFilter={dayFilter}
+                  onFilterChange={setDayFilter}
+                />
+
                 {/* Important Section */}
                 <div className="mb-8">
                   <h2 className="text-xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
                     <span className="text-2xl">⭐</span> Important Tasks
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {getDayTasks(0).filter(t => t.isImportant).map(task => (
+                    {myDayFilteredTasks.filter(t => t.isImportant).map(task => (
                       <div key={task._id}>
                         <div className="bg-[#1e1e1e] border border-yellow-500/20 p-4 rounded-lg">
                           <TaskCard
@@ -161,8 +251,8 @@ function App() {
                         </div>
                       </div>
                     ))}
-                    {getDayTasks(0).filter(t => t.isImportant).length === 0 && (
-                      <p className="text-gray-500 italic">No important tasks for today.</p>
+                    {myDayFilteredTasks.filter(t => t.isImportant).length === 0 && (
+                      <p className="text-gray-500 italic">No important tasks for this view.</p>
                     )}
                   </div>
                 </div>
@@ -170,17 +260,18 @@ function App() {
                 {/* All Tasks Section */}
                 <div className="flex-1 flex flex-col">
                   <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                    <span className="text-2xl">📋</span> All Tasks
+                    <span className="text-2xl">📋</span> Tasks
                   </h2>
                   <DayColumn
                     title=""
                     date=""
-                    tasks={getDayTasks(0)}
-                    onAddTask={(text) => { if (text) handleAddTask(text, today); }}
+                    tasks={myDayFilteredTasks}
+                    onAddTask={(text, category) => { if (text) handleAddTask(text, category, today); }}
                     onToggleComplete={toggleComplete}
                     onToggleImportant={toggleImportant}
                     onDelete={deleteTodo}
                     hideHeader={true}
+                    defaultCategory={dayFilter !== 'all' ? dayFilter : 'personal'}
                   />
                 </div>
               </div>
@@ -202,7 +293,7 @@ function App() {
                       title={title}
                       date={dateString}
                       tasks={getDayTasks(index)}
-                      onAddTask={(text) => { if (text) handleAddTask(text, date); }}
+                      onAddTask={(text, category) => { if (text) handleAddTask(text, category, date); }}
                       onToggleComplete={toggleComplete}
                       onToggleImportant={toggleImportant}
                       onDelete={deleteTodo}
@@ -233,26 +324,34 @@ function App() {
               </div>
             )}
 
-            {/* ALL TASKS VIEW */}
-            {activeTab === 'all-tasks' && (
-              <div className="max-w-4xl mx-auto w-full">
-                <h2 className="text-2xl font-bold text-white mb-6">All Tasks</h2>
-                <div className="space-y-2">
-                  {tasks.map(task => (
-                    <TaskCard
-                      key={task._id}
-                      task={task}
-                      onToggleComplete={toggleComplete}
-                      onToggleImportant={toggleImportant}
-                      onDelete={deleteTodo}
-                    />
-                  ))}
-                  {tasks.length === 0 && (
-                    <p className="text-gray-500 italic">No tasks yet. Add your first task!</p>
-                  )}
+            {/* CATEGORY VIEWS */}
+            {CATEGORY_TABS.map(tab => (
+              activeTab === tab.id && (
+                <div key={tab.id} className="max-w-4xl mx-auto w-full">
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <span className={tab.color}>{tab.icon}</span>
+                    <h2 className="text-2xl font-bold text-white">{tab.label}</h2>
+                    <span className="ml-auto text-sm text-gray-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                      {getFilteredTasks(tab.filter).length} task{getFilteredTasks(tab.filter).length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Add Task */}
+                  <DayColumn
+                    title=""
+                    date=""
+                    tasks={getFilteredTasks(tab.filter)}
+                    onAddTask={(text, category) => { if (text) handleAddTask(text, category); }}
+                    onToggleComplete={toggleComplete}
+                    onToggleImportant={toggleImportant}
+                    onDelete={deleteTodo}
+                    hideHeader={true}
+                    defaultCategory={tab.filter || 'personal'}
+                  />
                 </div>
-              </div>
-            )}
+              )
+            ))}
 
           </div>
         )}
