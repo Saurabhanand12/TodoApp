@@ -3,9 +3,10 @@ import axios from 'axios';
 import MainLayout from './layouts/MainLayout';
 import DayColumn from './layouts/DayColumn';
 import TaskCard from './layouts/TaskCard';
-import UsernameModal from './components/UsernameModal';
 import CategoryFilterDropdown from './components/CategoryFilterDropdown';
 import UndoToast from './components/UndoToast';
+import FeedbackButton from './components/FeedbackButton';
+import AdminFeedback from './components/AdminFeedback';
 import { User, Briefcase, ShoppingCart, CheckSquare } from 'lucide-react';
 import './index.css';
 
@@ -245,11 +246,11 @@ function App() {
                 />
 
                 {/* Important Section */}
-                <div className="mb-8">
-                  <h2 className="text-xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
-                    <span className="text-2xl">⭐</span> Important Tasks
+                <div className="mb-6 md:mb-8">
+                  <h2 className="text-lg md:text-xl font-bold text-yellow-400 mb-3 md:mb-4 flex items-center gap-2">
+                    <span className="text-xl md:text-2xl">⭐</span> Important Tasks
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     {myDayFilteredTasks.filter(t => t.isImportant).map(task => (
                       <div key={task._id}>
                         <div className="bg-[#1e1e1e] border border-yellow-500/20 p-4 rounded-lg">
@@ -270,8 +271,8 @@ function App() {
 
                 {/* All Tasks Section */}
                 <div className="flex-1 flex flex-col">
-                  <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                    <span className="text-2xl">📋</span> Tasks
+                  <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center gap-2">
+                    <span className="text-xl md:text-2xl">📋</span> Tasks
                   </h2>
                   <DayColumn
                     title=""
@@ -290,7 +291,7 @@ function App() {
 
             {/* PLANNED VIEW */}
             {activeTab === 'planned' && (
-              <div className="flex h-full gap-6 w-full overflow-x-auto">
+              <div className="flex flex-col md:flex-row h-full gap-6 w-full overflow-x-hidden md:overflow-x-auto">
                 {[...Array(7)].map((_, index) => {
                   const date = new Date();
                   date.setDate(today.getDate() + index);
@@ -340,10 +341,10 @@ function App() {
               activeTab === tab.id && (
                 <div key={tab.id} className="max-w-4xl mx-auto w-full">
                   {/* Header */}
-                  <div className="flex items-center gap-3 mb-6">
+                  <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
                     <span className={tab.color}>{tab.icon}</span>
-                    <h2 className="text-2xl font-bold text-white">{tab.label}</h2>
-                    <span className="ml-auto text-sm text-gray-500 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                    <h2 className="text-xl md:text-2xl font-bold text-white">{tab.label}</h2>
+                    <span className="ml-auto text-xs md:text-sm text-gray-500 bg-white/5 px-2 md:px-3 py-1 rounded-full border border-white/10">
                       {getFilteredTasks(tab.filter).length} task{getFilteredTasks(tab.filter).length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -364,8 +365,16 @@ function App() {
               )
             ))}
 
+            {/* ADMIN FEEDBACK VIEW */}
+            {activeTab === 'admin-feedback' && (
+              <AdminFeedback />
+            )}
+
           </div>
         )}
+
+        {/* Floating Feedback Button */}
+        <FeedbackButton username={username} />
       </MainLayout>
     </>
   );

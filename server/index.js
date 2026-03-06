@@ -27,9 +27,11 @@ app.use(async (req, res, next) => {
 // Routes
 const usersRouter = require('./routes/users');
 const tasksRouter = require('./routes/tasks');
+const feedbackRouter = require('./routes/feedback');
 
 app.use('/api/user', usersRouter);
 app.use('/api/tasks', tasksRouter);
+app.use('/api/feedback', feedbackRouter);
 
 // Health check
 app.get('/', (req, res) => {

@@ -4,17 +4,30 @@ const User = require('../models/User');
 // POST /api/user — create user if not exists, return user
 router.post('/', async (req, res) => {
     try {
-        const { username } = req.body;
+        const { username, password } = req.body;
         if (!username || !username.trim()) {
             return res.status(400).json({ error: 'Username is required' });
+        }
+        if (!password) {
+            return res.status(400).json({ error: 'Password is required' });
         }
 
         const normalizedUsername = username.trim().toLowerCase();
 
         let user = await User.findOne({ username: normalizedUsername });
         if (!user) {
-            user = new User({ username: normalizedUsername });
+            // Create user
+            user = new User({ username: normalizedUsername, password });
             await user.save();
+        } else {
+            // Validate password for existing user
+            if (!user.password) {
+                // Support legacy accounts that don't have a password yet
+                user.password = password;
+                await user.save();
+            } else if (user.password !== password) {
+                return res.status(401).json({ error: 'Incorrect password' });
+            }
         }
 
         res.json(user);

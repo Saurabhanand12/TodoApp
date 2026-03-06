@@ -5,6 +5,7 @@ import axios from 'axios';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const UsernameModal = ({ onUsernameSet }) => {
     const [inputValue, setInputValue] = useState('');
+    const [passwordValue, setPasswordValue] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -13,6 +14,10 @@ const UsernameModal = ({ onUsernameSet }) => {
         const trimmed = inputValue.trim();
         if (!trimmed) {
             setError('Please enter a username.');
+            return;
+        }
+        if (!passwordValue) {
+            setError('Please enter a password.');
             return;
         }
         if (trimmed.length < 2) {
@@ -27,7 +32,7 @@ const UsernameModal = ({ onUsernameSet }) => {
         setLoading(true);
         setError('');
         try {
-            await axios.post(`${API}/api/user`, { username: trimmed });
+            await axios.post(`${API}/api/user`, { username: trimmed, password: passwordValue });
             localStorage.setItem('username', trimmed.toLowerCase());
             onUsernameSet(trimmed.toLowerCase());
         } catch (err) {
@@ -63,7 +68,7 @@ const UsernameModal = ({ onUsernameSet }) => {
                         <Sparkles size={20} className="text-yellow-400" />
                     </h2>
                     <p className="text-sm text-gray-400">
-                        Enter a username to get started. Your tasks will be saved to your account.
+                        Enter a username and password to get started. Your tasks are securely saved to your account.
                     </p>
                 </div>
 
@@ -86,6 +91,23 @@ const UsernameModal = ({ onUsernameSet }) => {
                                 autoComplete="off"
                             />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-4">
+                            Password
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔒</span>
+                            <input
+                                id="password-input"
+                                type="password"
+                                value={passwordValue}
+                                onChange={(e) => { setPasswordValue(e.target.value); setError(''); }}
+                                placeholder="••••••••"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 pl-9 py-3 text-white placeholder-gray-600 text-sm outline-none focus:border-purple-500/60 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                            />
+                        </div>
                         {error && (
                             <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
                                 <span>⚠</span> {error}
@@ -104,7 +126,7 @@ const UsernameModal = ({ onUsernameSet }) => {
                 </form>
 
                 <p className="text-center text-xs text-gray-600 mt-6">
-                    Just enter your username.
+                    Log in with existing credientials or register a new one.
                 </p>
             </div>
         </div>

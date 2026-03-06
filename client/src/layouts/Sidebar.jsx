@@ -8,7 +8,8 @@ import {
     ShoppingCart,
     Briefcase,
     Settings,
-    Pencil
+    Pencil,
+    MessageSquare
 } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername, counts }) => {
@@ -85,6 +86,17 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername, counts }) 
                         onClick={() => setActiveTab('grocery')}
                         color="text-emerald-400"
                         count={counts?.grocery > 0 ? counts.grocery : null}
+                    />
+                </div>
+
+                <div className="pt-8">
+                    <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-4 mb-4">Admin</h3>
+                    <NavItem
+                        icon={<MessageSquare size={18} />}
+                        label="User Feedback"
+                        active={activeTab === 'admin-feedback'}
+                        onClick={() => setActiveTab('admin-feedback')}
+                        color="text-rose-400"
                     />
                 </div>
             </nav>
