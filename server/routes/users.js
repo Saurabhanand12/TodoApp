@@ -16,52 +16,62 @@ const generateTokenAndSetCookie = (res, user) => {
     });
 };
 
-/* 
-// POST /api/user/register - DISABLED
+// POST /api/user/register
 router.post('/register', async (req, res) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
+        const { username, email, password } = req.body;
+        if (!username || !email || !password) return res.status(400).json({ error: 'Username, email and password are required' });
+
+        if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
         const normalizedUsername = username.trim().toLowerCase();
-        let userExists = await User.findOne({ username: normalizedUsername });
-        if (userExists) return res.status(400).json({ error: 'User already exists' });
+        const normalizedEmail = email.trim().toLowerCase();
 
-        const user = new User({ username: normalizedUsername, password });
+        // Check if username or email already exists
+        const userExists = await User.findOne({
+            $or: [{ username: normalizedUsername }, { email: normalizedEmail }]
+        });
+
+        if (userExists) {
+            if (userExists.email === normalizedEmail) {
+                return res.status(400).json({ error: 'Email already registered' });
+            }
+            return res.status(400).json({ error: 'Username already taken' });
+        }
+
+        const user = new User({ username: normalizedUsername, email: normalizedEmail, password });
         await user.save();
 
         generateTokenAndSetCookie(res, user);
-        res.status(201).json({ _id: user._id, username: user.username });
+        res.status(201).json({ _id: user._id, username: user.username, email: user.email, message: 'Account created' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
-*/
 
-// POST /api/user/login - Unified Login/Register
+// POST /api/user/login
 router.post('/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
+        // Now login takes email (which can act as a username) and password
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'Email/Username and password are required' });
 
-        const normalizedUsername = username.trim().toLowerCase();
-        let user = await User.findOne({ username: normalizedUsername });
+        const identifier = email.trim().toLowerCase();
+        let user = await User.findOne({
+            $or: [{ email: identifier }, { username: identifier }]
+        });
 
         if (!user) {
-            // Create user if unique
-            user = new User({ username: normalizedUsername, password });
-            await user.save();
-            generateTokenAndSetCookie(res, user);
-            return res.status(201).json({ _id: user._id, username: user.username, message: 'Account created' });
+            return res.status(401).json({ error: 'Invalid credential' });
         }
 
         // Handle existing user
         if (!(await user.matchPassword(password))) {
-            return res.status(401).json({ error: 'Incorrect password for this username' });
+            return res.status(401).json({ error: 'Invalid credential' });
         }
 
         generateTokenAndSetCookie(res, user);
-        res.json({ _id: user._id, username: user.username });
+        res.json({ _id: user._id, username: user.username, email: user.email });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 
-const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsername, counts }) => {
+const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsername, counts, onLogout }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     return (
@@ -71,10 +71,21 @@ const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsernam
                         </div>
                     </div>
 
-                    <div className="hidden sm:flex items-center gap-3">
-                        <div className="text-xs md:text-sm font-medium text-gray-400 bg-white/5 px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-white/5 shadow-sm">
-                            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    <div className="flex items-center gap-3">
+                        <div className="hidden sm:flex items-center gap-3">
+                            <div className="text-xs md:text-sm font-medium text-gray-400 bg-white/5 px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-white/5 shadow-sm">
+                                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </div>
                         </div>
+                        {username && (
+                            <button
+                                onClick={onLogout}
+                                className="flex items-center gap-2 text-xs md:text-sm font-bold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500/30 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-red-500/20 transition-all shadow-sm shadow-red-900/10"
+                            >
+                                <LogOut size={16} />
+                                <span className="hidden sm:inline">Logout</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 

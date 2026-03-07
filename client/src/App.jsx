@@ -310,6 +310,7 @@ function App() {
             username={username}
             onEditUsername={handleEditUsername}
             counts={counts}
+            onLogout={handleLogout}
           >
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -463,7 +464,7 @@ function App() {
             )}
 
             {/* Floating Feedback Button - All users */}
-            {username && <FeedbackButton username={username} />}
+            <FeedbackButton username={username} />
           </MainLayout>
         </>
       )}
