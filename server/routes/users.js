@@ -10,7 +10,7 @@ const generateTokenAndSetCookie = (res, user) => {
 
     res.cookie('auth_token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' || true, // Better to always use secure if possible, or at least in prod
+        secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
@@ -57,19 +57,23 @@ router.post('/login', async (req, res) => {
         if (!email || !password) return res.status(400).json({ error: 'Email/Username and password are required' });
 
         const identifier = email.trim().toLowerCase();
+        console.log(`[LOGIN ATTEMPT] identifier: ${identifier}`);
         let user = await User.findOne({
             $or: [{ email: identifier }, { username: identifier }]
         });
 
         if (!user) {
+            console.log(`[LOGIN FAILED] user not found: ${identifier}`);
             return res.status(401).json({ error: 'Invalid credential' });
         }
 
         // Handle existing user
         if (!(await user.matchPassword(password))) {
+            console.log(`[LOGIN FAILED] wrong password for: ${identifier}`);
             return res.status(401).json({ error: 'Invalid credential' });
         }
 
+        console.log(`[LOGIN SUCCESS] ${identifier}`);
         generateTokenAndSetCookie(res, user);
         res.json({ _id: user._id, username: user.username, email: user.email });
     } catch (err) {
@@ -86,15 +90,23 @@ router.post('/logout', (req, res) => {
 // GET /api/user/me — Get profile from cookie
 router.get('/me', async (req, res) => {
     try {
+        console.log(`[AUTH CHECK] cookies received:`, req.cookies);
         const token = req.cookies.auth_token;
-        if (!token) return res.status(401).json({ error: 'No token, authorization denied' });
+        if (!token) {
+            console.log(`[AUTH CHECK] no token`);
+            return res.status(401).json({ error: 'No token, authorization denied' });
+        }
+
+        console.log(`[AUTH CHECK] Raw Token Found: ${token}`);
 
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id).select('-password');
 
         if (!user) return res.status(401).json({ error: 'Token is not valid' });
+        console.log(`[AUTH CHECK] token valid for ${user.username}`);
         res.json(user);
     } catch (err) {
+        console.log(`[AUTH CHECK] verification error:`, err.message);
         res.status(401).json({ error: 'Token is not valid' });
     }
 });

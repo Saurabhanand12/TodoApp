@@ -9,6 +9,10 @@ const todoSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    position: {
+        type: Number,
+        default: 0
+    },
     isImportant: {
         type: Boolean,
         default: false

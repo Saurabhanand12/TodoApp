@@ -9,8 +9,9 @@ const CATEGORIES = [
     { value: 'grocery', label: 'Grocery', icon: <ShoppingCart size={14} />, color: 'text-emerald-400' },
 ];
 
-const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, onUpdateTask, hideHeader = false, defaultCategory = 'personal' }) => {
+const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, onUpdateTask, onTaskDrop, onDragStart, onDragOverCard, onDropOnCard, hideHeader = false, defaultCategory = 'personal' }) => {
     const [isAdding, setIsAdding] = React.useState(false);
+    const [isDragOver, setIsDragOver] = React.useState(false);
     const [newTaskText, setNewTaskText] = React.useState('');
     const [selectedCategory, setSelectedCategory] = React.useState(defaultCategory);
 
@@ -36,7 +37,16 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
     };
 
     return (
-        <div className="flex-1 min-w-[300px] h-full flex flex-col">
+        <div
+            className={`flex-1 min-w-[300px] h-full flex flex-col rounded-xl transition-colors duration-300 ${isDragOver ? 'bg-blue-500/10 border-blue-500/30 border -m-1 p-1' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                if (onTaskDrop) onTaskDrop(e, date);
+            }}
+        >
             {!hideHeader && (
                 <div className="mb-4">
                     <h2 className="text-lg font-bold text-white flex items-baseline gap-2">
@@ -46,7 +56,7 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
             )}
 
             <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar pb-20">
-                {tasks.map(task => (
+                {tasks.sort((a, b) => (a.position || 0) - (b.position || 0)).map(task => (
                     <TaskCard
                         key={task._id}
                         task={task}
@@ -54,6 +64,9 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
                         onToggleImportant={onToggleImportant}
                         onDelete={onDelete}
                         onUpdateTask={onUpdateTask}
+                        onDragStart={onDragStart}
+                        onDragOverCard={onDragOverCard}
+                        onDropOnCard={onDropOnCard}
                     />
                 ))}
 

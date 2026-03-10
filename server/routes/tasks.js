@@ -59,4 +59,39 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// PUT /api/tasks/reorder — bulk update task positions
+router.put('/reorder/bulk', async (req, res) => {
+    try {
+        const { tasks } = req.body;
+        if (!Array.isArray(tasks)) return res.status(400).json({ error: 'Expected an array of tasks' });
+
+        const updates = tasks.map(task => ({
+            updateOne: {
+                filter: { _id: task._id },
+                update: { $set: { position: task.position } }
+            }
+        }));
+
+        if (updates.length > 0) {
+            await Todo.bulkWrite(updates);
+        }
+        res.json({ message: 'Tasks reordered successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/tasks/completed/:username — delete completed tasks for a user
+router.delete('/completed/:username', async (req, res) => {
+    try {
+        const result = await Todo.deleteMany({
+            username: req.params.username.toLowerCase(),
+            completed: true
+        });
+        res.json({ message: `Deleted ${result.deletedCount} completed tasks`, deletedCount: result.deletedCount });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

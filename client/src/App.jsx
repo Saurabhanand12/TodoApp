@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
 import MainLayout from './layouts/MainLayout';
 import DayColumn from './layouts/DayColumn';
@@ -9,7 +9,7 @@ import FeedbackButton from './components/FeedbackButton';
 import AdminFeedback from './components/AdminFeedback';
 import AuthModal from './components/AuthModal';
 import UsernameEditModal from './components/UsernameEditModal';
-import { User, Briefcase, ShoppingCart, CheckSquare } from 'lucide-react';
+import { User, Briefcase, ShoppingCart, CheckSquare, Trash2 } from 'lucide-react';
 import './index.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -64,8 +64,10 @@ function App() {
     }
   }, [activeTab, username]);
 
-  // Undo state
+  // Undo state - refs used to prevent stale closures inside setTimeout
   const [undoQueue, setUndoQueue] = useState(null); // { task, timeoutId }
+  const undoTimeoutRef = useRef(null);
+  const undoTaskRef = useRef(null);
 
   // ─── Fetch tasks by username ──────────────────────────────────────
   const fetchTasks = useCallback(async (user) => {
@@ -177,18 +179,19 @@ function App() {
   }, [username, fetchTasks]);
 
   const processPendingUndo = useCallback(() => {
-    if (!undoQueue) return;
-    clearTimeout(undoQueue.timeoutId);
-    if (undoQueue.action === 'delete') {
-      commitDelete(undoQueue.task._id);
-    }
-  }, [undoQueue, commitDelete]);
+    if (!undoTaskRef.current) return;
+    clearTimeout(undoTimeoutRef.current);
+    commitDelete(undoTaskRef.current._id);
+    undoTaskRef.current = null;
+    undoTimeoutRef.current = null;
+    setUndoQueue(null);
+  }, [commitDelete]);
 
   const deleteTodo = useCallback((id) => {
     const task = tasks.find(t => t._id === id);
     if (!task) return;
 
-    if (undoQueue && undoQueue.task._id !== id) {
+    if (undoTaskRef.current && undoTaskRef.current._id !== id) {
       processPendingUndo();
     }
 
@@ -196,11 +199,18 @@ function App() {
     setTasks(prev => prev.filter(t => t._id !== id));
 
     const timeoutId = setTimeout(() => {
-      commitDelete(id);
+      if (undoTaskRef.current && undoTaskRef.current._id === id) {
+        commitDelete(id);
+        undoTaskRef.current = null;
+        undoTimeoutRef.current = null;
+        setUndoQueue(null);
+      }
     }, 8000);
 
+    undoTaskRef.current = task;
+    undoTimeoutRef.current = timeoutId;
     setUndoQueue({ task, timeoutId, action: 'delete' });
-  }, [tasks, undoQueue, processPendingUndo, commitDelete]);
+  }, [tasks, processPendingUndo, commitDelete]);
 
   const toggleComplete = useCallback(async (id) => {
     const task = tasks.find(t => t._id === id);
@@ -232,19 +242,36 @@ function App() {
     }
   }, [username, fetchTasks]);
 
-  const handleUndo = useCallback(() => {
-    if (!undoQueue) return;
-    clearTimeout(undoQueue.timeoutId);
-
-    if (undoQueue.action === 'delete') {
-      setTasks(prev => {
-        const newTasks = [...prev, undoQueue.task];
-        return newTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      });
+  const handleDeleteCompleted = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await axios.delete(`${API}/api/tasks/completed/${username}`);
+      if (res.data.deletedCount > 0) {
+        setTasks(prev => prev.filter(t => !t.completed));
+      }
+    } catch (err) {
+      console.error('Error deleting completed tasks:', err);
+      if (username) fetchTasks(username);
+    } finally {
+      setLoading(false);
     }
+  }, [username, fetchTasks]);
 
+  const handleUndo = useCallback(() => {
+    if (!undoTaskRef.current) return;
+
+    clearTimeout(undoTimeoutRef.current);
+    const taskToRestore = undoTaskRef.current;
+
+    setTasks(prev => {
+      const newTasks = [...prev, taskToRestore];
+      return newTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    });
+
+    undoTaskRef.current = null;
+    undoTimeoutRef.current = null;
     setUndoQueue(null);
-  }, [undoQueue]);
+  }, []);
 
   // ─── Date & View helpers ──────────────────────────────────────────
   const normalizeDate = (date) => {
@@ -254,6 +281,82 @@ function App() {
   };
 
   const today = useMemo(() => new Date(), []);
+
+  // ─── Drag and Drop logic ──────────────────────────────────────────
+  const [draggedTask, setDraggedTask] = useState(null);
+
+  const handleDragStart = useCallback((e, task) => {
+    setDraggedTask(task);
+  }, []);
+
+  const handleTaskDrop = useCallback(async (e, targetDateString) => {
+    if (!draggedTask) return;
+
+    // First handle identical-date drops for reordering vs different-date drops
+    const dayNames = [...Array(7)].map((_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      return d.toLocaleDateString('en-US', { weekday: 'long' });
+    });
+    const offset = dayNames.indexOf(targetDateString);
+    if (offset === -1) return;
+
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + offset);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const isSameDate = new Date(draggedTask.due_date).setHours(0, 0, 0, 0) === targetDate.getTime();
+
+    // We update UI immediately
+    if (!isSameDate) {
+      await handleUpdateTask(draggedTask._id, { due_date: targetDate, position: 0 });
+    }
+    setDraggedTask(null);
+  }, [draggedTask, today, handleUpdateTask]);
+
+  const handleDropOnCard = useCallback(async (e, targetTask) => {
+    if (!draggedTask || draggedTask._id === targetTask._id) return;
+
+    // Find all tasks for the destination block (same date)
+    const normalizedTarget = normalizeDate(targetTask.due_date);
+    let columnTasks = tasks.filter(t => normalizeDate(t.due_date) === normalizedTarget);
+
+    // Sort array by existing position
+    columnTasks.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    // Remove dragged task from its old place if it was in the same column
+    columnTasks = columnTasks.filter(t => t._id !== draggedTask._id);
+
+    // Find target index
+    const targetIndex = columnTasks.findIndex(t => t._id === targetTask._id);
+    if (targetIndex === -1) return;
+
+    // Insert dragged task at target index
+    columnTasks.splice(targetIndex, 0, { ...draggedTask, due_date: targetTask.due_date });
+
+    // Re-assign positions for the whole column
+    const updates = columnTasks.map((t, index) => ({ _id: t._id, position: index }));
+
+    // Optimistically update
+    setTasks(prev => prev.map(p => {
+      const update = updates.find(u => u._id === p._id);
+      if (update) {
+        return { ...p, position: update.position, due_date: p._id === draggedTask._id ? targetTask.due_date : p.due_date };
+      }
+      return p;
+    }));
+
+    setDraggedTask(null);
+
+    // Call API
+    try {
+      await axios.put(`${API}/api/tasks/reorder/bulk`, { tasks: updates });
+    } catch (err) {
+      console.error('Failed to save manual order:', err);
+      if (username) fetchTasks(username);
+    }
+
+  }, [draggedTask, tasks, fetchTasks, username]);
 
   const getDayTasks = useCallback((dateOffset) => {
     const targetDate = new Date();
@@ -270,9 +373,15 @@ function App() {
     return myDayTasks.filter(t => t.category === dayFilter);
   }, [myDayTasks, dayFilter]);
 
-  const getFilteredTasks = useCallback((categoryFilter) =>
-    categoryFilter && categoryFilter !== 'all' ? tasks.filter(t => t.category === categoryFilter) : tasks
-    , [tasks]);
+  const getFilteredTasks = useCallback((categoryFilter) => {
+    const filtered = categoryFilter && categoryFilter !== 'all' ? tasks.filter(t => t.category === categoryFilter) : tasks;
+    return [...filtered].sort((a, b) => {
+      const dateA = normalizeDate(a.due_date);
+      const dateB = normalizeDate(b.due_date);
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.position || 0) - (b.position || 0);
+    });
+  }, [tasks]);
 
   // Calculate notification counts
   const counts = useMemo(() => {
@@ -302,7 +411,12 @@ function App() {
         </div>
       ) : (
         <>
-          <UndoToast undoTask={undoQueue?.task} undoAction={undoQueue?.action} onUndo={handleUndo} />
+          <UndoToast
+            undoTask={undoQueue?.task}
+            undoAction={undoQueue?.action}
+            onUndo={handleUndo}
+            onDismiss={processPendingUndo}
+          />
 
           <MainLayout
             activeTab={activeTab}
@@ -334,6 +448,19 @@ function App() {
                     />
 
                     {/* Important Section */}
+
+                    {/* Delete Completed Button for My Day */}
+                    {myDayFilteredTasks.some(t => t.completed) && (
+                      <div className="flex justify-end mb-4">
+                        <button
+                          onClick={handleDeleteCompleted}
+                          className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
+                        >
+                          <Trash2 size={16} /> Delete Completed Tasks
+                        </button>
+                      </div>
+                    )}
+
                     <div className="mb-6 md:mb-8">
                       <h2 className="text-lg md:text-xl font-bold text-yellow-400 mb-3 md:mb-4 flex items-center gap-2">
                         <span className="text-xl md:text-2xl">⭐</span> Important Tasks
@@ -347,6 +474,7 @@ function App() {
                                 onToggleComplete={toggleComplete}
                                 onToggleImportant={toggleImportant}
                                 onDelete={deleteTodo}
+                                onUpdateTask={handleUpdateTask}
                               />
                             </div>
                           </div>
@@ -365,12 +493,15 @@ function App() {
                       <DayColumn
                         title=""
                         date=""
-                        tasks={myDayFilteredTasks}
+                        tasks={[...myDayFilteredTasks].sort((a, b) => (a.position || 0) - (b.position || 0))}
                         onAddTask={(text, category) => { if (text) handleAddTask(text, category, today); }}
                         onToggleComplete={toggleComplete}
                         onToggleImportant={toggleImportant}
                         onDelete={deleteTodo}
                         onUpdateTask={handleUpdateTask}
+                        onDragStart={handleDragStart}
+                        onDragOverCard={() => { }}
+                        onDropOnCard={handleDropOnCard}
                         hideHeader={true}
                         defaultCategory={dayFilter !== 'all' ? dayFilter : 'personal'}
                       />
@@ -380,27 +511,47 @@ function App() {
 
                 {/* PLANNED VIEW */}
                 {activeTab === 'planned' && (
-                  <div className="flex flex-col md:flex-row h-full gap-6 w-full overflow-x-hidden md:overflow-x-auto">
-                    {[...Array(7)].map((_, index) => {
-                      const date = new Date();
-                      date.setDate(today.getDate() + index);
-                      const dateString = date.toLocaleDateString('en-US', { weekday: 'long' });
-                      let title = dateString;
-                      if (index === 0) title = 'Today';
-                      if (index === 1) title = 'Tomorrow';
-                      return (
-                        <DayColumn
-                          key={index}
-                          title={title}
-                          date={dateString}
-                          tasks={getDayTasks(index)}
-                          onAddTask={(text, category) => { if (text) handleAddTask(text, category, date); }}
-                          onToggleComplete={toggleComplete}
-                          onToggleImportant={toggleImportant}
-                          onDelete={deleteTodo}
-                        />
-                      );
-                    })}
+                  <div className="flex flex-col h-full w-full">
+
+                    {/* Delete Completed Button for Planned View */}
+                    {tasks.some(t => t.completed) && (
+                      <div className="flex justify-end mb-4 pr-6 pt-4">
+                        <button
+                          onClick={handleDeleteCompleted}
+                          className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
+                        >
+                          <Trash2 size={16} /> Delete Completed
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col md:flex-row gap-6 overflow-x-hidden md:overflow-x-auto planned-scrollbar pb-4 px-2">
+                      {[...Array(7)].map((_, index) => {
+                        const date = new Date();
+                        date.setDate(today.getDate() + index);
+                        const dateString = date.toLocaleDateString('en-US', { weekday: 'long' });
+                        let title = dateString;
+                        if (index === 0) title = 'Today';
+                        if (index === 1) title = 'Tomorrow';
+                        return (
+                          <DayColumn
+                            key={index}
+                            title={title}
+                            date={title !== dateString ? dateString : ''}
+                            tasks={getDayTasks(index)}
+                            onAddTask={(text, category) => { if (text) handleAddTask(text, category, date); }}
+                            onToggleComplete={toggleComplete}
+                            onToggleImportant={toggleImportant}
+                            onDelete={deleteTodo}
+                            onUpdateTask={handleUpdateTask}
+                            onDragStart={handleDragStart}
+                            onDragOverCard={() => { }}
+                            onDropOnCard={handleDropOnCard}
+                            onTaskDrop={handleTaskDrop}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -416,6 +567,7 @@ function App() {
                           onToggleComplete={toggleComplete}
                           onToggleImportant={toggleImportant}
                           onDelete={deleteTodo}
+                          onUpdateTask={handleUpdateTask}
                         />
                       ))}
                       {tasks.filter(t => t.isImportant).length === 0 && (
@@ -438,6 +590,18 @@ function App() {
                         </span>
                       </div>
 
+                      {/* Delete Completed Button for Category */}
+                      {getFilteredTasks(tab.filter).some(t => t.completed) && (
+                        <div className="flex justify-end mb-4">
+                          <button
+                            onClick={handleDeleteCompleted}
+                            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
+                          >
+                            <Trash2 size={16} /> Delete Completed
+                          </button>
+                        </div>
+                      )}
+
                       {/* Add Task */}
                       <DayColumn
                         title=""
@@ -448,6 +612,9 @@ function App() {
                         onToggleImportant={toggleImportant}
                         onDelete={deleteTodo}
                         onUpdateTask={handleUpdateTask}
+                        onDragStart={handleDragStart}
+                        onDragOverCard={() => { }}
+                        onDropOnCard={handleDropOnCard}
                         hideHeader={true}
                         defaultCategory={tab.filter !== 'all' ? tab.filter : 'personal'}
                       />

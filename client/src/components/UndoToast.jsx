@@ -1,34 +1,32 @@
 import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 
-const UndoToast = ({ undoTask, undoAction, onUndo }) => {
+const UndoToast = ({ undoTask, undoAction, onUndo, onDismiss }) => {
     const [progress, setProgress] = useState(100);
 
     useEffect(() => {
         if (!undoTask) return;
 
-        // 8 seconds total duration
-        const startTime = Date.now();
-        const duration = 8000;
+        // Start animation after a tiny delay to ensure CSS transition triggers
+        setProgress(100);
+        const startTimer = setTimeout(() => {
+            setProgress(0);
+        }, 50);
 
-        const updateProgress = () => {
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
-            setProgress(remaining);
-            if (remaining > 0) {
-                requestAnimationFrame(updateProgress);
-            }
-        };
-
-        const animId = requestAnimationFrame(updateProgress);
-
-        return () => cancelAnimationFrame(animId);
+        return () => clearTimeout(startTimer);
     }, [undoTask]);
 
     if (!undoTask) return null;
 
     return (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 animate-modal-in">
-            <div className="bg-[#1a1a1a]/90 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl shadow-black/50 flex flex-col gap-3 min-w-[300px]">
+            <div className="bg-[#1a1a1a]/90 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl shadow-black/50 flex flex-col gap-3 min-w-[300px] relative pr-10">
+                <button
+                    onClick={onDismiss}
+                    className="absolute top-2 right-2 text-gray-500 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+                >
+                    <X size={16} />
+                </button>
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col min-w-0 pr-4">
                         <span className="text-sm font-bold text-white mb-0.5 whitespace-nowrap">
@@ -46,8 +44,11 @@ const UndoToast = ({ undoTask, undoAction, onUndo }) => {
                 {/* Progress bar */}
                 <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-blue-500 rounded-full transition-all ease-linear"
-                        style={{ width: `${progress}%` }}
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{
+                            width: `${progress}%`,
+                            transition: progress === 100 ? 'none' : 'width 8s linear'
+                        }}
                     />
                 </div>
             </div>

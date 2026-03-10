@@ -8,7 +8,19 @@ const app = express();
 
 // Middleware
 const corsOptions = {
-    origin: ['http://localhost:5173', 'https://todo-app-frontend-eta-ten.vercel.app'],
+    origin: (origin, callback) => {
+        const allowedOrigins = [
+            'http://localhost:5173',
+            'http://localhost:5174',
+            'http://localhost:5175',
+            'https://todo-app-frontend-eta-ten.vercel.app'
+        ];
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     optionsSuccessStatus: 200
 };

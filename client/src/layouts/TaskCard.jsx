@@ -7,9 +7,10 @@ const CATEGORY_META = {
     grocery: { label: 'Grocery', icon: <ShoppingCart size={11} />, color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
 };
 
-const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdateTask }) => {
+const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdateTask, onDragStart, onDragOverCard, onDropOnCard }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState(task.text);
+    const [isDragTarget, setIsDragTarget] = useState(false);
     const inputRef = useRef(null);
     const catMeta = CATEGORY_META[task.category] || CATEGORY_META.personal;
 
@@ -35,7 +36,30 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdat
     };
 
     return (
-        <div className="group bg-[#1a1a1a]/60 backdrop-blur-sm p-4 rounded-xl border border-white/5 hover:border-white/10 hover:bg-[#1a1a1a]/80 transition-all duration-300 flex items-start gap-4 mb-3 shadow-lg shadow-black/10 relative hover:shadow-black/20 hover:scale-[1.005]">
+        <div
+            draggable={!isEditing}
+            onDragStart={(e) => {
+                if (!isEditing && onDragStart) onDragStart(e, task);
+            }}
+            onDragOver={(e) => {
+                if (onDragOverCard) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragTarget(true);
+                    onDragOverCard(e, task);
+                }
+            }}
+            onDragLeave={() => setIsDragTarget(false)}
+            onDrop={(e) => {
+                setIsDragTarget(false);
+                if (onDropOnCard) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDropOnCard(e, task);
+                }
+            }}
+            className={`group cursor-move bg-[#1a1a1a]/60 backdrop-blur-sm p-4 rounded-xl border ${isDragTarget ? 'border-blue-500 bg-[#1a1a1a] shadow-blue-500/20 shadow-lg scale-[1.02]' : 'border-white/5'} hover:border-white/10 hover:bg-[#1a1a1a]/80 transition-all duration-300 flex items-start gap-4 mb-3 shadow-lg shadow-black/10 relative hover:shadow-black/20 hover:scale-[1.005]`}
+        >
             <button
                 onClick={() => onToggleComplete(task._id)}
                 className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 ${task.completed
