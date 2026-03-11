@@ -4,12 +4,23 @@ import MainLayout from './layouts/MainLayout';
 import DayColumn from './layouts/DayColumn';
 import TaskCard from './layouts/TaskCard';
 import CategoryFilterDropdown from './components/CategoryFilterDropdown';
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import UndoToast from './components/UndoToast';
 import FeedbackButton from './components/FeedbackButton';
 import AdminFeedback from './components/AdminFeedback';
 import AuthModal from './components/AuthModal';
 import UsernameEditModal from './components/UsernameEditModal';
 import { User, Briefcase, ShoppingCart, CheckSquare, Trash2 } from 'lucide-react';
+import CustomCursor from './components/CustomCursor';
 import './index.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -283,80 +294,111 @@ function App() {
   const today = useMemo(() => new Date(), []);
 
   // ─── Drag and Drop logic ──────────────────────────────────────────
-  const [draggedTask, setDraggedTask] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
 
-  const handleDragStart = useCallback((e, task) => {
-    setDraggedTask(task);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = useCallback((event) => {
+    const { active } = event;
+    const task = active.data.current?.task;
+    setActiveTask(task);
   }, []);
 
-  const handleTaskDrop = useCallback(async (e, targetDateString) => {
+  const handleDragEnd = useCallback(async (event) => {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over) return;
+
+    const draggedTask = active.data.current?.task;
+    const overType = over.data.current?.type;
+
     if (!draggedTask) return;
 
-    // First handle identical-date drops for reordering vs different-date drops
-    const dayNames = [...Array(7)].map((_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      return d.toLocaleDateString('en-US', { weekday: 'long' });
-    });
-    const offset = dayNames.indexOf(targetDateString);
-    if (offset === -1) return;
+    // Dropping onto an empty column or into a different column directly
+    if (overType === 'Column') {
+      const targetId = over.id; // Either 'Today', 'Tomorrow', 'Monday', or 'my-day', etc.
 
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + offset);
-    targetDate.setHours(0, 0, 0, 0);
+      if (activeTab === 'planned') {
+        const dayNames = [...Array(7)].map((_, i) => {
+          const d = new Date(today);
+          d.setDate(today.getDate() + i);
+          let title = d.toLocaleDateString('en-US', { weekday: 'long' });
+          if (i === 0) title = 'Today';
+          if (i === 1) title = 'Tomorrow';
+          return title;
+        });
 
-    const isSameDate = new Date(draggedTask.due_date).setHours(0, 0, 0, 0) === targetDate.getTime();
+        const offset = dayNames.indexOf(targetId);
+        if (offset !== -1) {
+          const targetDate = new Date(today);
+          targetDate.setDate(today.getDate() + offset);
+          targetDate.setHours(0, 0, 0, 0);
 
-    // We update UI immediately
-    if (!isSameDate) {
-      await handleUpdateTask(draggedTask._id, { due_date: targetDate, position: 0 });
-    }
-    setDraggedTask(null);
-  }, [draggedTask, today, handleUpdateTask]);
-
-  const handleDropOnCard = useCallback(async (e, targetTask) => {
-    if (!draggedTask || draggedTask._id === targetTask._id) return;
-
-    // Find all tasks for the destination block (same date)
-    const normalizedTarget = normalizeDate(targetTask.due_date);
-    let columnTasks = tasks.filter(t => normalizeDate(t.due_date) === normalizedTarget);
-
-    // Sort array by existing position
-    columnTasks.sort((a, b) => (a.position || 0) - (b.position || 0));
-
-    // Remove dragged task from its old place if it was in the same column
-    columnTasks = columnTasks.filter(t => t._id !== draggedTask._id);
-
-    // Find target index
-    const targetIndex = columnTasks.findIndex(t => t._id === targetTask._id);
-    if (targetIndex === -1) return;
-
-    // Insert dragged task at target index
-    columnTasks.splice(targetIndex, 0, { ...draggedTask, due_date: targetTask.due_date });
-
-    // Re-assign positions for the whole column
-    const updates = columnTasks.map((t, index) => ({ _id: t._id, position: index }));
-
-    // Optimistically update
-    setTasks(prev => prev.map(p => {
-      const update = updates.find(u => u._id === p._id);
-      if (update) {
-        return { ...p, position: update.position, due_date: p._id === draggedTask._id ? targetTask.due_date : p.due_date };
+          const isSameDate = new Date(draggedTask.due_date).setHours(0, 0, 0, 0) === targetDate.getTime();
+          if (!isSameDate) {
+            await handleUpdateTask(draggedTask._id, { due_date: targetDate, position: 0 });
+          }
+        }
       }
-      return p;
-    }));
-
-    setDraggedTask(null);
-
-    // Call API
-    try {
-      await axios.put(`${API}/api/tasks/reorder/bulk`, { tasks: updates });
-    } catch (err) {
-      console.error('Failed to save manual order:', err);
-      if (username) fetchTasks(username);
+      return;
     }
 
-  }, [draggedTask, tasks, fetchTasks, username]);
+    // Dropping onto a task (reordering or moving)
+    if (overType === 'Task') {
+      const targetTask = over.data.current?.task;
+      if (!targetTask || draggedTask._id === targetTask._id) return;
+
+      const groupByDate = activeTab === 'planned' || activeTab === 'my-day';
+      let columnTasks = tasks.filter(t => {
+        if (groupByDate) return normalizeDate(t.due_date) === normalizeDate(targetTask.due_date);
+        return t.category === targetTask.category || (!t.category && targetTask.category === 'personal');
+      });
+
+      columnTasks.sort((a, b) => (a.position || 0) - (b.position || 0));
+      columnTasks = columnTasks.filter(t => t._id !== draggedTask._id);
+
+      const targetIndex = columnTasks.findIndex(t => t._id === targetTask._id);
+      if (targetIndex === -1) return;
+
+      const updatedTask = { ...draggedTask };
+      if (groupByDate) updatedTask.due_date = targetTask.due_date;
+      else updatedTask.category = targetTask.category;
+
+      columnTasks.splice(targetIndex, 0, updatedTask);
+
+      const updates = columnTasks.map((t, index) => ({ _id: t._id, position: index }));
+
+      setTasks(prev => prev.map(p => {
+        const update = updates.find(u => u._id === p._id);
+        if (update) {
+          return {
+            ...p,
+            position: update.position,
+            due_date: p._id === draggedTask._id ? updatedTask.due_date : p.due_date,
+            category: p._id === draggedTask._id ? updatedTask.category : p.category
+          };
+        }
+        return p;
+      }));
+
+      try {
+        await axios.put(`${API}/api/tasks/reorder/bulk`, { tasks: updates });
+      } catch (err) {
+        console.error('Failed to save manual order:', err);
+        if (username) fetchTasks(username);
+      }
+    }
+  }, [activeTab, tasks, today, username, fetchTasks, handleUpdateTask, API]);
 
   const getDayTasks = useCallback((dateOffset) => {
     const targetDate = new Date();
@@ -376,6 +418,7 @@ function App() {
   const getFilteredTasks = useCallback((categoryFilter) => {
     const filtered = categoryFilter && categoryFilter !== 'all' ? tasks.filter(t => t.category === categoryFilter) : tasks;
     return [...filtered].sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
       const dateA = normalizeDate(a.due_date);
       const dateB = normalizeDate(b.due_date);
       if (dateA !== dateB) return dateA - dateB;
@@ -396,6 +439,7 @@ function App() {
   // ─── Render ───────────────────────────────────────────────────────
   return (
     <>
+      <CustomCursor />
       {showModal && <AuthModal onAuthSuccess={handleAuthSuccess} />}
       {showEditModal && (
         <UsernameEditModal
@@ -418,181 +462,107 @@ function App() {
             onDismiss={processPendingUndo}
           />
 
-          <MainLayout
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            username={username}
-            onEditUsername={handleEditUsername}
-            counts={counts}
-            onLogout={handleLogout}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           >
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-gray-500 text-sm">Loading your tasks...</p>
+            <MainLayout
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              username={username}
+              onEditUsername={handleEditUsername}
+              counts={counts}
+              onLogout={handleLogout}
+            >
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-gray-500 text-sm">Loading your tasks...</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex h-full gap-6">
+              ) : (
+                <div className="flex h-full gap-6">
 
-                {/* MY DAY VIEW */}
-                {activeTab === 'my-day' && (
-                  <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full pt-4">
+                  {/* MY DAY VIEW */}
+                  {activeTab === 'my-day' && (
+                    <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full pt-4">
 
-                    {/* Category Filter */}
-                    <CategoryFilterDropdown
-                      options={CATEGORY_TABS}
-                      activeFilter={dayFilter}
-                      onFilterChange={setDayFilter}
-                    />
-
-                    {/* Important Section */}
-
-                    {/* Delete Completed Button for My Day */}
-                    {myDayFilteredTasks.some(t => t.completed) && (
-                      <div className="flex justify-end mb-4">
-                        <button
-                          onClick={handleDeleteCompleted}
-                          className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
-                        >
-                          <Trash2 size={16} /> Delete Completed Tasks
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="mb-6 md:mb-8">
-                      <h2 className="text-lg md:text-xl font-bold text-yellow-400 mb-3 md:mb-4 flex items-center gap-2">
-                        <span className="text-xl md:text-2xl">⭐</span> Important Tasks
-                      </h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                        {myDayFilteredTasks.filter(t => t.isImportant).map(task => (
-                          <div key={task._id}>
-                            <div className="bg-[#1e1e1e] border border-yellow-500/20 p-4 rounded-lg">
-                              <TaskCard
-                                task={task}
-                                onToggleComplete={toggleComplete}
-                                onToggleImportant={toggleImportant}
-                                onDelete={deleteTodo}
-                                onUpdateTask={handleUpdateTask}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                        {myDayFilteredTasks.filter(t => t.isImportant).length === 0 && (
-                          <p className="text-gray-500 italic">No important tasks for this view.</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* All Tasks Section */}
-                    <div className="flex-1 flex flex-col">
-                      <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center gap-2">
-                        <span className="text-xl md:text-2xl">📋</span> Tasks
-                      </h2>
-                      <DayColumn
-                        title=""
-                        date=""
-                        tasks={[...myDayFilteredTasks].sort((a, b) => (a.position || 0) - (b.position || 0))}
-                        onAddTask={(text, category) => { if (text) handleAddTask(text, category, today); }}
-                        onToggleComplete={toggleComplete}
-                        onToggleImportant={toggleImportant}
-                        onDelete={deleteTodo}
-                        onUpdateTask={handleUpdateTask}
-                        onDragStart={handleDragStart}
-                        onDragOverCard={() => { }}
-                        onDropOnCard={handleDropOnCard}
-                        hideHeader={true}
-                        defaultCategory={dayFilter !== 'all' ? dayFilter : 'personal'}
+                      {/* Category Filter */}
+                      <CategoryFilterDropdown
+                        options={CATEGORY_TABS}
+                        activeFilter={dayFilter}
+                        onFilterChange={setDayFilter}
                       />
-                    </div>
-                  </div>
-                )}
 
-                {/* PLANNED VIEW */}
-                {activeTab === 'planned' && (
-                  <div className="flex flex-col h-full w-full">
+                      {/* Important Section */}
 
-                    {/* Delete Completed Button for Planned View */}
-                    {tasks.some(t => t.completed) && (
-                      <div className="flex justify-end mb-4 pr-6 pt-4">
-                        <button
-                          onClick={handleDeleteCompleted}
-                          className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
-                        >
-                          <Trash2 size={16} /> Delete Completed
-                        </button>
+                      {/* Delete Completed Button for My Day */}
+                      {myDayFilteredTasks.some(t => t.completed) && (
+                        <div className="flex justify-end mb-4">
+                          <button
+                            onClick={handleDeleteCompleted}
+                            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
+                          >
+                            <Trash2 size={16} /> Delete Completed Tasks
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="mb-6 md:mb-8">
+                        <h2 className="text-lg md:text-xl font-bold text-yellow-400 mb-3 md:mb-4 flex items-center gap-2">
+                          <span className="text-xl md:text-2xl">⭐</span> Important Tasks
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                          {myDayFilteredTasks.filter(t => t.isImportant).map(task => (
+                            <div key={task._id}>
+                              <div className="bg-[#1e1e1e] border border-yellow-500/20 p-4 rounded-lg">
+                                <TaskCard
+                                  task={task}
+                                  onToggleComplete={toggleComplete}
+                                  onToggleImportant={toggleImportant}
+                                  onDelete={deleteTodo}
+                                  onUpdateTask={handleUpdateTask}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                          {myDayFilteredTasks.filter(t => t.isImportant).length === 0 && (
+                            <p className="text-gray-500 italic">No important tasks for this view.</p>
+                          )}
+                        </div>
                       </div>
-                    )}
 
-                    <div className="flex flex-col md:flex-row gap-6 overflow-x-hidden md:overflow-x-auto planned-scrollbar pb-4 px-2">
-                      {[...Array(7)].map((_, index) => {
-                        const date = new Date();
-                        date.setDate(today.getDate() + index);
-                        const dateString = date.toLocaleDateString('en-US', { weekday: 'long' });
-                        let title = dateString;
-                        if (index === 0) title = 'Today';
-                        if (index === 1) title = 'Tomorrow';
-                        return (
-                          <DayColumn
-                            key={index}
-                            title={title}
-                            date={title !== dateString ? dateString : ''}
-                            tasks={getDayTasks(index)}
-                            onAddTask={(text, category) => { if (text) handleAddTask(text, category, date); }}
-                            onToggleComplete={toggleComplete}
-                            onToggleImportant={toggleImportant}
-                            onDelete={deleteTodo}
-                            onUpdateTask={handleUpdateTask}
-                            onDragStart={handleDragStart}
-                            onDragOverCard={() => { }}
-                            onDropOnCard={handleDropOnCard}
-                            onTaskDrop={handleTaskDrop}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* IMPORTANT VIEW */}
-                {activeTab === 'important' && (
-                  <div className="max-w-4xl mx-auto w-full">
-                    <h2 className="text-2xl font-bold text-white mb-6">Important Tasks</h2>
-                    <div className="space-y-2">
-                      {tasks.filter(t => t.isImportant).map(task => (
-                        <TaskCard
-                          key={task._id}
-                          task={task}
+                      {/* All Tasks Section */}
+                      <div className="flex-1 flex flex-col">
+                        <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center gap-2">
+                          <span className="text-xl md:text-2xl">📋</span> Tasks
+                        </h2>
+                        <DayColumn
+                          title=""
+                          date=""
+                          tasks={[...myDayFilteredTasks].sort((a, b) => (a.position || 0) - (b.position || 0))}
+                          onAddTask={(text, category) => { if (text) handleAddTask(text, category, today); }}
                           onToggleComplete={toggleComplete}
                           onToggleImportant={toggleImportant}
                           onDelete={deleteTodo}
                           onUpdateTask={handleUpdateTask}
+                          hideHeader={true}
+                          defaultCategory={dayFilter !== 'all' ? dayFilter : 'personal'}
                         />
-                      ))}
-                      {tasks.filter(t => t.isImportant).length === 0 && (
-                        <p className="text-gray-500 italic">No important tasks yet.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* CATEGORY VIEWS */}
-                {CATEGORY_TABS.map(tab => (
-                  activeTab === tab.id && (
-                    <div key={tab.id} className="max-w-4xl mx-auto w-full">
-                      {/* Header */}
-                      <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-                        <span className={tab.color}>{tab.icon}</span>
-                        <h2 className="text-xl md:text-2xl font-bold text-white">{tab.label}</h2>
-                        <span className="ml-auto text-xs md:text-sm text-gray-500 bg-white/5 px-2 md:px-3 py-1 rounded-full border border-white/10">
-                          {getFilteredTasks(tab.filter).length} task{getFilteredTasks(tab.filter).length !== 1 ? 's' : ''}
-                        </span>
                       </div>
+                    </div>
+                  )}
 
-                      {/* Delete Completed Button for Category */}
-                      {getFilteredTasks(tab.filter).some(t => t.completed) && (
-                        <div className="flex justify-end mb-4">
+                  {/* PLANNED VIEW */}
+                  {activeTab === 'planned' && (
+                    <div className="flex flex-col h-full w-full">
+
+                      {/* Delete Completed Button for Planned View */}
+                      {tasks.some(t => t.completed) && (
+                        <div className="flex justify-end mb-4 pr-6 pt-4">
                           <button
                             onClick={handleDeleteCompleted}
                             className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
@@ -602,37 +572,120 @@ function App() {
                         </div>
                       )}
 
-                      {/* Add Task */}
-                      <DayColumn
-                        title=""
-                        date=""
-                        tasks={getFilteredTasks(tab.filter)}
-                        onAddTask={(text, category) => { if (text) handleAddTask(text, category); }}
-                        onToggleComplete={toggleComplete}
-                        onToggleImportant={toggleImportant}
-                        onDelete={deleteTodo}
-                        onUpdateTask={handleUpdateTask}
-                        onDragStart={handleDragStart}
-                        onDragOverCard={() => { }}
-                        onDropOnCard={handleDropOnCard}
-                        hideHeader={true}
-                        defaultCategory={tab.filter !== 'all' ? tab.filter : 'personal'}
-                      />
+                      <div className="flex flex-col md:flex-row gap-6 overflow-x-hidden md:overflow-x-auto planned-scrollbar pb-4 px-2">
+                        {[...Array(7)].map((_, index) => {
+                          const date = new Date();
+                          date.setDate(today.getDate() + index);
+                          const dateString = date.toLocaleDateString('en-US', { weekday: 'long' });
+                          let title = dateString;
+                          if (index === 0) title = 'Today';
+                          if (index === 1) title = 'Tomorrow';
+                          return (
+                            <DayColumn
+                              key={index}
+                              title={title}
+                              date={title !== dateString ? dateString : ''}
+                              tasks={getDayTasks(index)}
+                              onAddTask={(text, category) => { if (text) handleAddTask(text, category, date); }}
+                              onToggleComplete={toggleComplete}
+                              onToggleImportant={toggleImportant}
+                              onDelete={deleteTodo}
+                              onUpdateTask={handleUpdateTask}
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
-                  )
-                ))}
+                  )}
 
-                {/* ADMIN FEEDBACK VIEW */}
-                {activeTab === 'admin-feedback' && (
-                  <AdminFeedback />
-                )}
+                  {/* IMPORTANT VIEW */}
+                  {activeTab === 'important' && (
+                    <div className="max-w-4xl mx-auto w-full">
+                      <h2 className="text-2xl font-bold text-white mb-6">Important Tasks</h2>
+                      <div className="space-y-2">
+                        {tasks.filter(t => t.isImportant).map(task => (
+                          <TaskCard
+                            key={task._id}
+                            task={task}
+                            onToggleComplete={toggleComplete}
+                            onToggleImportant={toggleImportant}
+                            onDelete={deleteTodo}
+                            onUpdateTask={handleUpdateTask}
+                          />
+                        ))}
+                        {tasks.filter(t => t.isImportant).length === 0 && (
+                          <p className="text-gray-500 italic">No important tasks yet.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-              </div>
-            )}
+                  {/* CATEGORY VIEWS */}
+                  {CATEGORY_TABS.map(tab => (
+                    activeTab === tab.id && (
+                      <div key={tab.id} className="max-w-4xl mx-auto w-full">
+                        {/* Header */}
+                        <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+                          <span className={tab.color}>{tab.icon}</span>
+                          <h2 className="text-xl md:text-2xl font-bold text-white">{tab.label}</h2>
+                          <span className="ml-auto text-xs md:text-sm text-gray-500 bg-white/5 px-2 md:px-3 py-1 rounded-full border border-white/10">
+                            {getFilteredTasks(tab.filter).length} task{getFilteredTasks(tab.filter).length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
 
-            {/* Floating Feedback Button - All users */}
-            <FeedbackButton username={username} />
-          </MainLayout>
+                        {/* Delete Completed Button for Category */}
+                        {getFilteredTasks(tab.filter).some(t => t.completed) && (
+                          <div className="flex justify-end mb-4">
+                            <button
+                              onClick={handleDeleteCompleted}
+                              className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
+                            >
+                              <Trash2 size={16} /> Delete Completed
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Add Task */}
+                        <DayColumn
+                          title=""
+                          date=""
+                          tasks={getFilteredTasks(tab.filter)}
+                          onAddTask={(text, category) => { if (text) handleAddTask(text, category); }}
+                          onToggleComplete={toggleComplete}
+                          onToggleImportant={toggleImportant}
+                          onDelete={deleteTodo}
+                          onUpdateTask={handleUpdateTask}
+                          hideHeader={true}
+                          defaultCategory={tab.filter !== 'all' ? tab.filter : 'personal'}
+                        />
+                      </div>
+                    )
+                  ))}
+
+                  {/* ADMIN FEEDBACK VIEW */}
+                  {activeTab === 'admin-feedback' && (
+                    <AdminFeedback />
+                  )}
+
+                </div>
+              )}
+
+              {/* Floating Feedback Button - All users */}
+              <FeedbackButton username={username} />
+            </MainLayout>
+
+            <DragOverlay>
+              {activeTask ? (
+                <TaskCard
+                  task={activeTask}
+                  onToggleComplete={() => { }}
+                  onToggleImportant={() => { }}
+                  onDelete={() => { }}
+                  onUpdateTask={() => { }}
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </>
       )}
     </>

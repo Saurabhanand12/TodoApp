@@ -2,6 +2,8 @@
 import React from 'react';
 import TaskCard from './TaskCard';
 import { Plus, User, Briefcase, ShoppingCart } from 'lucide-react';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 const CATEGORIES = [
     { value: 'personal', label: 'Personal', icon: <User size={14} />, color: 'text-blue-400' },
@@ -9,9 +11,8 @@ const CATEGORIES = [
     { value: 'grocery', label: 'Grocery', icon: <ShoppingCart size={14} />, color: 'text-emerald-400' },
 ];
 
-const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, onUpdateTask, onTaskDrop, onDragStart, onDragOverCard, onDropOnCard, hideHeader = false, defaultCategory = 'personal' }) => {
+const DayColumn = ({ id, title, date, tasks, onAddTask, onToggleComplete, onToggleImportant, onDelete, onUpdateTask, hideHeader = false, defaultCategory = 'personal' }) => {
     const [isAdding, setIsAdding] = React.useState(false);
-    const [isDragOver, setIsDragOver] = React.useState(false);
     const [newTaskText, setNewTaskText] = React.useState('');
     const [selectedCategory, setSelectedCategory] = React.useState(defaultCategory);
 
@@ -19,6 +20,13 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
     React.useEffect(() => {
         setSelectedCategory(defaultCategory);
     }, [defaultCategory]);
+
+    const { setNodeRef, isOver } = useDroppable({
+        id: id || title || 'default-column',
+        data: {
+            type: 'Column'
+        }
+    });
 
     const handleAdd = () => {
         if (newTaskText.trim()) {
@@ -38,14 +46,8 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
 
     return (
         <div
-            className={`flex-1 min-w-[300px] h-full flex flex-col rounded-xl transition-colors duration-300 ${isDragOver ? 'bg-blue-500/10 border-blue-500/30 border -m-1 p-1' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={(e) => {
-                e.preventDefault();
-                setIsDragOver(false);
-                if (onTaskDrop) onTaskDrop(e, date);
-            }}
+            ref={setNodeRef}
+            className={`flex-1 min-w-[300px] h-full flex flex-col rounded-xl transition-colors duration-300 ${isOver ? 'bg-blue-500/10 border-blue-500/30 border -m-1 p-1' : ''}`}
         >
             {!hideHeader && (
                 <div className="mb-4">
@@ -56,19 +58,21 @@ const DayColumn = ({ title, date, tasks, onAddTask, onToggleComplete, onToggleIm
             )}
 
             <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar pb-20">
-                {tasks.sort((a, b) => (a.position || 0) - (b.position || 0)).map(task => (
-                    <TaskCard
-                        key={task._id}
-                        task={task}
-                        onToggleComplete={onToggleComplete}
-                        onToggleImportant={onToggleImportant}
-                        onDelete={onDelete}
-                        onUpdateTask={onUpdateTask}
-                        onDragStart={onDragStart}
-                        onDragOverCard={onDragOverCard}
-                        onDropOnCard={onDropOnCard}
-                    />
-                ))}
+                <SortableContext items={tasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                    {tasks.sort((a, b) => {
+                        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                        return (a.position || 0) - (b.position || 0);
+                    }).map(task => (
+                        <TaskCard
+                            key={task._id}
+                            task={task}
+                            onToggleComplete={onToggleComplete}
+                            onToggleImportant={onToggleImportant}
+                            onDelete={onDelete}
+                            onUpdateTask={onUpdateTask}
+                        />
+                    ))}
+                </SortableContext>
 
                 {isAdding ? (
                     <div className="bg-[#1a1a1a]/60 backdrop-blur-sm p-3 rounded-xl border border-blue-500/30 shadow-lg shadow-blue-900/10 animate-in fade-in zoom-in-95 duration-200">

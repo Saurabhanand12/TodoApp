@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Star, Trash2, User, Briefcase, ShoppingCart, Edit3, Check, X } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const CATEGORY_META = {
     personal: { label: 'Personal', icon: <User size={11} />, color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
@@ -13,6 +15,29 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdat
     const [isDragTarget, setIsDragTarget] = useState(false);
     const inputRef = useRef(null);
     const catMeta = CATEGORY_META[task.category] || CATEGORY_META.personal;
+
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({
+        id: task._id,
+        data: {
+            type: 'Task',
+            task,
+        },
+        disabled: isEditing,
+    });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        touchAction: 'none',
+    };
 
     useEffect(() => {
         if (isEditing) {
@@ -37,31 +62,15 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdat
 
     return (
         <div
-            draggable={!isEditing}
-            onDragStart={(e) => {
-                if (!isEditing && onDragStart) onDragStart(e, task);
-            }}
-            onDragOver={(e) => {
-                if (onDragOverCard) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragTarget(true);
-                    onDragOverCard(e, task);
-                }
-            }}
-            onDragLeave={() => setIsDragTarget(false)}
-            onDrop={(e) => {
-                setIsDragTarget(false);
-                if (onDropOnCard) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onDropOnCard(e, task);
-                }
-            }}
-            className={`group cursor-move bg-[#1a1a1a]/60 backdrop-blur-sm p-4 rounded-xl border ${isDragTarget ? 'border-blue-500 bg-[#1a1a1a] shadow-blue-500/20 shadow-lg scale-[1.02]' : 'border-white/5'} hover:border-white/10 hover:bg-[#1a1a1a]/80 transition-all duration-300 flex items-start gap-4 mb-3 shadow-lg shadow-black/10 relative hover:shadow-black/20 hover:scale-[1.005]`}
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className={`group cursor-move bg-[#1a1a1a]/60 backdrop-blur-sm p-4 rounded-xl border ${isDragTarget ? 'border-blue-500 bg-[#1a1a1a] shadow-blue-500/20 shadow-lg scale-[1.02]' : 'border-white/5'} hover:border-white/10 hover:bg-[#1a1a1a]/80 transition-all duration-300 flex items-start gap-4 mb-3 shadow-lg shadow-black/10 relative hover:shadow-black/20 hover:scale-[1.005] ${task.completed ? 'opacity-60' : ''}`}
         >
             <button
-                onClick={() => onToggleComplete(task._id)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onToggleComplete(task._id); }}
                 className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 ${task.completed
                     ? 'bg-blue-600 border-blue-600 scale-110 shadow-lg shadow-blue-500/30'
                     : 'border-gray-600 hover:border-blue-500 hover:bg-blue-500/10'
@@ -80,11 +89,13 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdat
                             onChange={(e) => setEditText(e.target.value)}
                             onKeyDown={handleKeyDown}
                             onBlur={handleSave}
+                            onPointerDown={(e) => e.stopPropagation()}
                             className="flex-1 bg-white/5 border border-blue-500/50 rounded px-2 py-1 text-[15px] text-gray-200 outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                     </div>
                 ) : (
                     <p
+                        onPointerDown={(e) => e.stopPropagation()}
                         onDoubleClick={() => setIsEditing(true)}
                         className={`text-[15px] font-medium leading-normal break-words transition-colors duration-300 cursor-pointer ${task.completed ? 'line-through text-gray-500 decoration-gray-600' : 'text-gray-200'}`}
                     >
@@ -106,6 +117,7 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdat
 
             <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
                 <button
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => onToggleImportant(task._id)}
                     className={`p-1.5 rounded-lg hover:bg-white/10 transition-colors ${task.isImportant ? 'text-yellow-400 bg-yellow-400/10' : 'text-gray-500 hover:text-yellow-400'}`}
                     title={task.isImportant ? "Unmark Important" : "Mark Important"}
@@ -113,6 +125,7 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdat
                     <Star size={18} fill={task.isImportant ? "currentColor" : "none"} />
                 </button>
                 <button
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => setIsEditing(true)}
                     className="p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-blue-400 transition-colors"
                     title="Edit Task"
@@ -120,6 +133,7 @@ const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdat
                     <Edit3 size={18} />
                 </button>
                 <button
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => onDelete(task._id)}
                     className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors"
                     title="Delete Task"

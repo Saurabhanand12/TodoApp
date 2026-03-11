@@ -90,14 +90,11 @@ router.post('/logout', (req, res) => {
 // GET /api/user/me — Get profile from cookie
 router.get('/me', async (req, res) => {
     try {
-        console.log(`[AUTH CHECK] cookies received:`, req.cookies);
         const token = req.cookies.auth_token;
         if (!token) {
             console.log(`[AUTH CHECK] no token`);
             return res.status(401).json({ error: 'No token, authorization denied' });
         }
-
-        console.log(`[AUTH CHECK] Raw Token Found: ${token}`);
 
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id).select('-password');
