@@ -13,7 +13,8 @@ const corsOptions = {
             'http://localhost:5173',
             'http://localhost:5174',
             'http://localhost:5175',
-            'https://todo-app-frontend-eta-ten.vercel.app'
+            'https://todo-app-frontend-eta-ten.vercel.app',
+            'https://todo-app-frontend-saurabh-anand-s-projects-3b82a62b.vercel.app'
         ];
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
