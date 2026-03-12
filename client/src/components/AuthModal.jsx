@@ -50,16 +50,14 @@ const AuthModal = ({ onAuthSuccess }) => {
                 ? { email: email.trim().toLowerCase(), password }
                 : { username: username.trim(), email: email.trim().toLowerCase(), password };
 
-            console.log(`[FRONTEND] Trying to POST ${API}${endpoint} with payload`, payload);
 
             const res = await axios.post(`${API}${endpoint}`, payload, { withCredentials: true });
 
-            console.log(`[FRONTEND] Response received`, res.data);
             onAuthSuccess(res.data.username);
             setEmail('');
             setPassword('');
         } catch (err) {
-            console.error(`[FRONTEND] Error in authentication:`, err);
+            // Authentication error handled via UI error state
             setError(err.response?.data?.error || 'Authentication failed. Please try again.');
         } finally {
             setLoading(false);
