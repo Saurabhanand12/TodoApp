@@ -1,21 +1,34 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
-const dbConnect = require('./lib/db');
-require('dotenv').config();
+const mongoSanitize = require('express-mongo-sanitize');
+
+// Config & utils (must be first — validates required env vars)
+const { PORT, FRONTEND_URL, isProduction } = require('./config/env');
+const dbConnect = require('./config/db');
+const logger = require('./utils/logger');
+const errorHandler = require('./middleware/errorHandler');
+const { generalRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
-// Middleware
-const corsOptions = {
+// ─── Security Middleware ─────────────────────────────────────────────────────
+
+// Set secure HTTP headers
+app.use(helmet());
+
+// CORS — tightly scoped to your production frontend + local dev
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    FRONTEND_URL,
+];
+
+app.use(cors({
     origin: (origin, callback) => {
-        const allowedOrigins = [
-            'http://localhost:5173',
-            'http://localhost:5174',
-            'http://localhost:5175',
-            'https://todo-app-frontend-eta-ten.vercel.app',
-            'https://todo-app-frontend-saurabh-anand-s-projects-3b82a62b.vercel.app'
-        ];
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -23,11 +36,28 @@ const corsOptions = {
         }
     },
     credentials: true,
-    optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
+    optionsSuccessStatus: 200,
+}));
+
+// ─── Performance Middleware ──────────────────────────────────────────────────
+
+// Gzip compress responses
+app.use(compression());
+
+// ─── Parsing Middleware ──────────────────────────────────────────────────────
+
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Cap request body size
+
+// Sanitize request data to prevent NoSQL injection attacks
+app.use(mongoSanitize());
+
+// ─── Rate Limiting ───────────────────────────────────────────────────────────
+
+// General rate limiter on all API routes (login has its own stricter limiter)
+app.use('/api', generalRateLimiter);
+
+// ─── Database Connection ─────────────────────────────────────────────────────
 
 // Ensure DB is connected before every request (critical for Vercel serverless)
 app.use(async (req, res, next) => {
@@ -35,29 +65,35 @@ app.use(async (req, res, next) => {
         await dbConnect();
         next();
     } catch (err) {
-        console.error('DB connection failed:', err);
-        res.status(500).json({ error: 'Database connection failed' });
+        logger.error('DB connection failed:', err.message);
+        res.status(500).json({ success: false, error: 'Database connection failed' });
     }
 });
 
-// Routes
-const usersRouter = require('./routes/users');
-const tasksRouter = require('./routes/tasks');
-const feedbackRouter = require('./routes/feedback');
+// ─── Routes ──────────────────────────────────────────────────────────────────
 
-app.use('/api/user', usersRouter);
-app.use('/api/tasks', tasksRouter);
-app.use('/api/feedback', feedbackRouter);
+app.use('/api/user', require('./routes/users'));
+app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/feedback', require('./routes/feedback'));
 
 // Health check
 app.get('/', (req, res) => {
-    res.json({ message: 'Todo API is running!' });
+    res.json({ success: true, message: 'Todo API is running!', version: '2.0.0' });
 });
 
-// Start server locally (not on Vercel)
-if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+// 404 handler for unknown routes
+app.use((req, res) => {
+    res.status(404).json({ success: false, error: `Route ${req.method} ${req.path} not found` });
+});
+
+// ─── Global Error Handler (must be last) ─────────────────────────────────────
+
+app.use(errorHandler);
+
+// ─── Start Server (local dev only) ───────────────────────────────────────────
+
+if (!isProduction) {
+    app.listen(PORT, () => logger.info(`Server running on http://localhost:${PORT}`));
 }
 
 // Export for Vercel serverless
