@@ -36,12 +36,30 @@ const corsOptions = {
 
 const app = express();
 
+// ─── CORS headers set FIRST — raw, before any middleware that can fail ────────
+// This guarantees Access-Control-Allow-Origin on ALL responses, including 500s.
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (!origin || allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cookie');
+
+    // Handle OPTIONS preflight immediately — don't pass through other middleware
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
 // ─── Security Middleware ─────────────────────────────────────────────────────
 
 // Set secure HTTP headers (crossOriginResourcePolicy relaxed for API use)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// CORS — must come right after helmet
+// CORS via library (for full compliance — our manual headers above are the safety net)
 app.use(cors(corsOptions));
 
 // ── Config & utils (loaded AFTER CORS is registered) ─────────────────────────
