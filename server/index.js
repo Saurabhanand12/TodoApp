@@ -6,7 +6,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
-const mongoSanitize = require('express-mongo-sanitize');
 
 // ── CORS & Helmet set up using process.env DIRECTLY (not via config module) ──
 // This must happen before any require() that could throw, so that ALL
@@ -80,8 +79,24 @@ app.use(compression());
 app.use(cookieParser());
 app.use(express.json({ limit: '10kb' })); // Cap request body size
 
-// Sanitize request data to prevent NoSQL injection attacks
-app.use(mongoSanitize());
+// ── NoSQL Injection Sanitizer (Express 5 compatible) ─────────────────────────
+// express-mongo-sanitize crashes on Express 5 — req.query is read-only there.
+// This custom sanitizer only touches req.body (the real injection attack surface).
+const sanitizeObject = (obj) => {
+    if (obj && typeof obj === 'object') {
+        for (const key of Object.keys(obj)) {
+            if (key.startsWith('$') || key.includes('.')) {
+                delete obj[key];
+            } else {
+                sanitizeObject(obj[key]);
+            }
+        }
+    }
+};
+app.use((req, res, next) => {
+    if (req.body) sanitizeObject(req.body);
+    next();
+});
 
 // ─── Rate Limiting ───────────────────────────────────────────────────────────
 
