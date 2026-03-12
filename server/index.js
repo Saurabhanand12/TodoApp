@@ -44,9 +44,6 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 // CORS — must come right after helmet
 app.use(cors(corsOptions));
 
-// Explicitly handle OPTIONS preflight for all routes
-app.options('*', cors(corsOptions));
-
 // ── Config & utils (loaded AFTER CORS is registered) ─────────────────────────
 const { PORT, isProduction } = require('./config/env');
 const dbConnect = require('./config/db');
