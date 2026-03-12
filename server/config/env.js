@@ -1,10 +1,14 @@
 require('dotenv').config();
 
+// Warn about missing env vars instead of throwing synchronously.
+// A hard throw here crashes the module before Express CORS middleware
+// is registered, causing all preflight requests to return no CORS headers.
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
 
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
-        throw new Error(`Missing required environment variable: ${envVar}`);
+        // In production log to stderr so Vercel captures it in function logs
+        console.error(`[STARTUP ERROR] Missing required environment variable: ${envVar}. Set it in the Vercel dashboard.`);
     }
 }
 

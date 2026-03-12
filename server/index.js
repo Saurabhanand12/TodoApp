@@ -1,3 +1,6 @@
+// ── Load .env FIRST — before anything else ──────────────────────────────────
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -5,21 +8,13 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
 
-// Config & utils (must be first — validates required env vars)
-const { PORT, FRONTEND_URL, isProduction } = require('./config/env');
-const dbConnect = require('./config/db');
-const logger = require('./utils/logger');
-const errorHandler = require('./middleware/errorHandler');
-const { generalRateLimiter } = require('./middleware/rateLimiter');
+// ── CORS & Helmet set up using process.env DIRECTLY (not via config module) ──
+// This must happen before any require() that could throw, so that ALL
+// responses — including startup-error 500s — carry the correct CORS headers.
+const FRONTEND_URL =
+    process.env.FRONTEND_URL ||
+    'https://todo-app-frontend-saurabh-anand-s-projects-3b82a62b.vercel.app';
 
-const app = express();
-
-// ─── Security Middleware ─────────────────────────────────────────────────────
-
-// Set secure HTTP headers
-app.use(helmet());
-
-// CORS — tightly scoped to your production frontend + local dev
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
@@ -27,7 +22,7 @@ const allowedOrigins = [
     FRONTEND_URL,
 ];
 
-app.use(cors({
+const corsOptions = {
     origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
@@ -37,7 +32,28 @@ app.use(cors({
     },
     credentials: true,
     optionsSuccessStatus: 200,
-}));
+};
+
+const app = express();
+
+// ─── Security Middleware ─────────────────────────────────────────────────────
+
+// Set secure HTTP headers (crossOriginResourcePolicy relaxed for API use)
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+// CORS — must come right after helmet
+app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS preflight for all routes
+app.options('*', cors(corsOptions));
+
+// ── Config & utils (loaded AFTER CORS is registered) ─────────────────────────
+const { PORT, isProduction } = require('./config/env');
+const dbConnect = require('./config/db');
+const logger = require('./utils/logger');
+const errorHandler = require('./middleware/errorHandler');
+const { generalRateLimiter } = require('./middleware/rateLimiter');
+
 
 // ─── Performance Middleware ──────────────────────────────────────────────────
 
