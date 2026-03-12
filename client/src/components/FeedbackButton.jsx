@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
+import logger from '../utils/logger';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -31,7 +32,7 @@ const FeedbackButton = ({ username }) => {
                     setHasAlreadySubmitted(true);
                 }
             } catch (err) {
-                console.error('Error checking feedback status:', err);
+                logger.error('Error checking feedback status:', err);
             }
         };
         checkFeedbackStatus();

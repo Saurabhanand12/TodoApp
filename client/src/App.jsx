@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
+import logger from './utils/logger';
 import MainLayout from './layouts/MainLayout';
 import DayColumn from './layouts/DayColumn';
 import TaskCard from './layouts/TaskCard';
@@ -88,7 +89,7 @@ function App() {
       const res = await axios.get(`${API}/api/tasks/${user}`);
       setTasks(res.data);
     } catch (err) {
-      console.error('Error fetching tasks:', err);
+      logger.error('Error fetching tasks:', err);
     } finally {
       setLoading(false);
     }
@@ -117,7 +118,7 @@ function App() {
       setTasks([]);
       setShowModal(true);
     } catch (err) {
-      console.error('Logout failed:', err);
+      logger.error('Logout failed:', err);
     }
   }, []);
 
@@ -160,7 +161,7 @@ function App() {
       });
       setTasks(prev => [res.data, ...prev]);
     } catch (err) {
-      console.error('Error adding task:', err);
+      logger.error('Error adding task:', err);
     }
   }, [username]);
 
@@ -173,7 +174,7 @@ function App() {
       const res = await axios.put(`${API}/api/tasks/${id}`, { isImportant: !task.isImportant });
       setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
     } catch (err) {
-      console.error('Error toggling important:', err);
+      logger.error('Error toggling important:', err);
       if (username) fetchTasks(username);
     }
   }, [tasks, username, fetchTasks]);
@@ -183,7 +184,7 @@ function App() {
     try {
       await axios.delete(`${API}/api/tasks/${id}`);
     } catch (err) {
-      console.error('Error committing delete:', err);
+      logger.error('Error committing delete:', err);
       if (username) fetchTasks(username);
     }
     setUndoQueue(null);
@@ -236,7 +237,7 @@ function App() {
       const res = await axios.put(`${API}/api/tasks/${id}`, { completed: newCompletedState });
       setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
     } catch (err) {
-      console.error('Error committing complete:', err);
+      logger.error('Error committing complete:', err);
       if (username) fetchTasks(username);
     }
   }, [tasks, username, fetchTasks]);
@@ -248,7 +249,7 @@ function App() {
       const res = await axios.put(`${API}/api/tasks/${id}`, updates);
       setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
     } catch (err) {
-      console.error('Error updating task:', err);
+      logger.error('Error updating task:', err);
       if (username) fetchTasks(username);
     }
   }, [username, fetchTasks]);
@@ -261,7 +262,7 @@ function App() {
         setTasks(prev => prev.filter(t => !t.completed));
       }
     } catch (err) {
-      console.error('Error deleting completed tasks:', err);
+      logger.error('Error deleting completed tasks:', err);
       if (username) fetchTasks(username);
     } finally {
       setLoading(false);
@@ -394,7 +395,7 @@ function App() {
       try {
         await axios.put(`${API}/api/tasks/reorder/bulk`, { tasks: updates });
       } catch (err) {
-        console.error('Failed to save manual order:', err);
+        logger.error('Failed to save manual order:', err);
         if (username) fetchTasks(username);
       }
     }

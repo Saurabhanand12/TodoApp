@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MessageSquare, Clock, User, Star } from 'lucide-react';
+import logger from '../utils/logger';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -22,7 +23,7 @@ const AdminFeedback = () => {
             const res = await axios.get(`${API}/api/feedback`);
             setFeedbacks(res.data);
         } catch (err) {
-            console.error("Error fetching feedback:", err);
+            logger.error("Error fetching feedback:", err);
         } finally {
             setLoading(false);
         }

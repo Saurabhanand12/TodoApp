@@ -57,23 +57,19 @@ router.post('/login', async (req, res) => {
         if (!email || !password) return res.status(400).json({ error: 'Email/Username and password are required' });
 
         const identifier = email.trim().toLowerCase();
-        console.log(`[LOGIN ATTEMPT] identifier: ${identifier}`);
         let user = await User.findOne({
             $or: [{ email: identifier }, { username: identifier }]
         });
 
         if (!user) {
-            console.log(`[LOGIN FAILED] user not found: ${identifier}`);
             return res.status(401).json({ error: 'Invalid credential' });
         }
 
         // Handle existing user
         if (!(await user.matchPassword(password))) {
-            console.log(`[LOGIN FAILED] wrong password for: ${identifier}`);
             return res.status(401).json({ error: 'Invalid credential' });
         }
 
-        console.log(`[LOGIN SUCCESS] ${identifier}`);
         generateTokenAndSetCookie(res, user);
         res.json({ _id: user._id, username: user.username, email: user.email });
     } catch (err) {
@@ -92,7 +88,6 @@ router.get('/me', async (req, res) => {
     try {
         const token = req.cookies.auth_token;
         if (!token) {
-            console.log(`[AUTH CHECK] no token`);
             return res.status(401).json({ error: 'No token, authorization denied' });
         }
 
@@ -100,10 +95,8 @@ router.get('/me', async (req, res) => {
         const user = await User.findById(decoded.id).select('-password');
 
         if (!user) return res.status(401).json({ error: 'Token is not valid' });
-        console.log(`[AUTH CHECK] token valid for ${user.username}`);
         res.json(user);
     } catch (err) {
-        console.log(`[AUTH CHECK] verification error:`, err.message);
         res.status(401).json({ error: 'Token is not valid' });
     }
 });
