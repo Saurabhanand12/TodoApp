@@ -6,6 +6,22 @@ const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 const getTasks = asyncHandler(async (req, res) => {
     const username = req.params.username.toLowerCase();
+
+    // ─── Rollover Logic: Move uncompleted past-due tasks to today ───
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    await Todo.updateMany(
+        {
+            username,
+            completed: false,
+            due_date: { $lt: today },
+        },
+        {
+            $set: { due_date: new Date() },
+        }
+    );
+
     const todos = await Todo.find({ username })
         .select('-__v')
         .sort({ createdAt: -1 })
