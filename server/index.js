@@ -20,17 +20,21 @@ const allowedOrigins = [
     'http://localhost:5175',
     FRONTEND_URL,
     'https://todo-app-frontend-saurabh-anand-s-projects-3b82a62b.vercel.app',
+    'https://todo-app-frontend-kohl.vercel.app', // Added common project URL
 ];
 
 const corsOptions = {
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        // Allow requests with no origin (like mobile apps or curl) or if in allowed list
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'Cookie'],
     optionsSuccessStatus: 200,
 };
 
@@ -40,14 +44,14 @@ const app = express();
 // This guarantees Access-Control-Allow-Origin on ALL responses, including 500s.
 app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (!origin || allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    // Safety check for dynamic origins in manual headers
+    if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
     }
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cookie');
 
-    // Handle OPTIONS preflight immediately — don't pass through other middleware
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }

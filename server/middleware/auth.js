@@ -10,6 +10,7 @@ const protect = (req, res, next) => {
     const token = req.cookies?.auth_token;
 
     if (!token) {
+        console.warn(`[AUTH] Missing auth_token cookie for ${req.method} ${req.path}`);
         return sendError(res, 'No token, authorization denied', 401);
     }
 
@@ -17,7 +18,8 @@ const protect = (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded; // { id: userId, iat, exp }
         next();
-    } catch {
+    } catch (err) {
+        console.error(`[AUTH] Token verification failed for ${req.method} ${req.path}:`, err.message);
         return sendError(res, 'Token is not valid or has expired', 401);
     }
 };
