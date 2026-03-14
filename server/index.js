@@ -12,13 +12,14 @@ const cookieParser = require('cookie-parser');
 // responses — including startup-error 500s — carry the correct CORS headers.
 const FRONTEND_URL =
     process.env.FRONTEND_URL ||
-    'https://todo-app-frontend-saurabh-anand-s-projects-3b82a62b.vercel.app';
+    'https://todo-app-frontend-kohl.vercel.app';
 
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
     FRONTEND_URL,
+    'https://todo-app-frontend-saurabh-anand-s-projects-3b82a62b.vercel.app',
 ];
 
 const corsOptions = {
@@ -135,12 +136,14 @@ app.use((req, res) => {
 // ─── Global Error Handler (must be last) ─────────────────────────────────────
 
 app.use(errorHandler);
-
 // ─── Start Server (local dev only) ───────────────────────────────────────────
 
-if (!isProduction) {
-    app.listen(PORT, () => logger.info(`Server running on http://localhost:${PORT}`));
+// Vercel automatically sets process.env.VERCEL to "1"
+if (!process.env.VERCEL && !isProduction) {
+    const port = PORT || 5000;
+    app.listen(port, () => logger.info(`Server running on http://localhost:${port}`));
 }
 
 // Export for Vercel serverless
 module.exports = app;
+
