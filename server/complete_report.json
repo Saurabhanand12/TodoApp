@@ -1,0 +1,91 @@
+{
+  "totalUsers": 14,
+  "totalTodos": 34,
+  "totalFeedbacks": 5,
+  "users": [
+    {
+      "id": "69aad81450a33004f24ce03c",
+      "username": "testdebug456"
+    },
+    {
+      "id": "69aae6beec80d4d28a70af6a",
+      "username": "prince"
+    },
+    {
+      "id": "69aae80bec80d4d28a70af74",
+      "username": "admin_saurabhanand88",
+      "email": "admin_saurabhanand88@example.com"
+    },
+    {
+      "id": "69aae9bfec80d4d28a70af80",
+      "username": "subham"
+    },
+    {
+      "id": "69aaf1ae39d497ceab9ea320",
+      "username": "suhail"
+    },
+    {
+      "id": "69aaf91f9811a2dfa3f44819",
+      "username": "ved prakash"
+    },
+    {
+      "id": "69aafb39c3c5dfe513f1ac0f",
+      "username": "sauarbhanand"
+    },
+    {
+      "id": "69abdff0d78b61a2d532c678",
+      "username": "sonu"
+    },
+    {
+      "id": "69abe705b2d2eb8380f0e94f",
+      "username": "sumit"
+    },
+    {
+      "id": "69ac0a520230cc1f2f2706cf",
+      "username": "hello",
+      "email": "saurabh1@gmail.com"
+    },
+    {
+      "id": "69afdba49d44048ef9cd02a8",
+      "username": "ritika",
+      "email": "ritikaanand9319@gmail.com"
+    },
+    {
+      "id": "69b0272532b0666f3f3f1eea",
+      "username": "test_user_xyz",
+      "email": "random_test_user@example.com"
+    },
+    {
+      "id": "69b0282432b0666f3f3f1ef9",
+      "username": "test_node_user",
+      "email": "test_node@example.com"
+    },
+    {
+      "id": "69b0293591e6aa1468667b61",
+      "username": "anotheruser2",
+      "email": "anotheruser2@example.com"
+    }
+  ],
+  "todoUsernames": [
+    "admin_saurabhanand88",
+    "ved prakash",
+    "ritika"
+  ],
+  "todosByUsername": {
+    "admin_saurabhanand88": 25,
+    "ved prakash": 5,
+    "ritika": 4
+  },
+  "feedbackUsernames": [
+    "subham",
+    "suhail",
+    "admin_saurabhanand88",
+    "ritika"
+  ],
+  "feedbacksByUsername": {
+    "subham": 1,
+    "suhail": 1,
+    "admin_saurabhanand88": 2,
+    "ritika": 1
+  }
+}
