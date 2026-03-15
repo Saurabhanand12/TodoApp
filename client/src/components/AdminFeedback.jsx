@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { MessageSquare, Clock, User, Star } from 'lucide-react';
 import { API, api } from '../utils/api';
+import logger from '../utils/logger';
 
 const RATING_FACES = {
     1: '😠',

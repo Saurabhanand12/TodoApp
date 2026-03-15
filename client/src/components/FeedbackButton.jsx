@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
 import { API, api, formatError } from '../utils/api';
+import logger from '../utils/logger';
 
 const FeedbackButton = ({ username }) => {
     const [isOpen, setIsOpen] = useState(false);
