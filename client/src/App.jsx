@@ -24,7 +24,8 @@ import { User, Briefcase, ShoppingCart, CheckSquare, Trash2 } from 'lucide-react
 import CustomCursor from './components/CustomCursor';
 import './index.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 
+  (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
 axios.defaults.withCredentials = true;
 
 // Category metadata (single source of truth)

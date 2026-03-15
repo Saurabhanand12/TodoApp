@@ -21,7 +21,8 @@ const UsernameEditModal = ({ currentUsername, onSave, onCancel, loading: externa
         try {
             await onSave(trimmed);
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to update username');
+            const errorMessage = err.response?.data?.error || err.message || 'Failed to update username';
+            setError(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : String(errorMessage));
         } finally {
             setLocalLoading(false);
         }

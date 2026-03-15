@@ -58,7 +58,8 @@ const AuthModal = ({ onAuthSuccess }) => {
             setPassword('');
         } catch (err) {
             // Authentication error handled via UI error state
-            setError(err.response?.data?.error || 'Authentication failed. Please try again.');
+            const errorMessage = err.response?.data?.error || err.message || 'Authentication failed. Please try again.';
+            setError(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : String(errorMessage));
         } finally {
             setLoading(false);
         }
