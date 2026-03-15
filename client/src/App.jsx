@@ -45,13 +45,20 @@ function App() {
 
   // Check auth on mount
   useEffect(() => {
+    // Global error handler for production debugging
+    const handleError = (e) => logger.error('Global Runtime Error:', e);
+    window.addEventListener('error', handleError);
+
     const checkAuth = async () => {
       try {
+        logger.info('Initializing auth check...');
         const res = await api.get('/api/user/me');
         const confirmedUser = res.data.username;
         setUsername(confirmedUser);
         localStorage.setItem('todo_user', confirmedUser);
+        logger.info('Auth check successful:', confirmedUser);
       } catch (err) {
+        logger.error('Auth check failed or no session:', formatError(err));
         setUsername('');
         localStorage.removeItem('todo_user');
         setShowModal(true);
@@ -60,6 +67,7 @@ function App() {
       }
     };
     checkAuth();
+    return () => window.removeEventListener('error', handleError);
   }, []);
 
   // ─── Task state ───────────────────────────────────────────────────

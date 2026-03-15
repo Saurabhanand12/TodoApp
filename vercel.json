@@ -17,12 +17,8 @@
       "destination": "/server/index.js"
     },
     {
-      "source": "/_vercel/(.*)",
-      "destination": "/_vercel/$1"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/client/$1"
+      "destination": "/$1"
     }
   ]
 }
