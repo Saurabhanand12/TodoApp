@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # ✨ TodoApp: The Modern Task Manager ✨
 
@@ -18,7 +18,7 @@
 ---
 
 ## 🎨 UI & Design Highlights
-This isn't just another standard Todo app; it's designed with modern web aesthetics in mind:
+This isn isn\'t just another standard Todo app; it\'s designed with modern web aesthetics in mind:
 - **🔮 Glassmorphism:** Semi-transparent frosted glass effects on sidebars and task cards.
 - **🌌 Dynamic Backgrounds:** Animated, slowly pulsing gradient orbs that bring the app to life.
 - **📱 Fully Responsive:** Carefully crafted layouts that look amazing on desktops, tablets, and phones.
@@ -52,11 +52,17 @@ This isn't just another standard Todo app; it's designed with modern web aesthet
 
 ---
 
-## 🚀 Getting Started
+## 🔒 Security & Authentication
+The app uses a robust **Token-based Authentication** system to ensure seamless cross-domain support (ideal for Vercel deployments):
+- **JWT (JSON Web Tokens):** Securely signed tokens for user sessions.
+- **Authorization Headers:** Tokens are manually sent via `Authorization: Bearer <token>` to bypass browser cookie restrictions on different subdomains.
 
-Follow these instructions to get a copy of the project up and running on your local machine.
+---
+
+## 🚀 Getting Started
 
 ### 1️⃣ Clone the Repository
 ```bash
-git clone [https://github.com/yourusername/todoapp.git](https://github.com/yourusername/todoapp.git)
-cd todoapp
+git clone https://github.com/Saurabhanand12/TodoApp.git
+cd TodoApp
+```
