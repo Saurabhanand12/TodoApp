@@ -1,15 +1,16 @@
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
 import { API, api, formatError } from '../utils/api';
 import logger from '../utils/logger';
 
 const FeedbackButton = ({ username }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [message, setMessage] = useState('');
-    const [selectedRating, setSelectedRating] = useState(null);
-    const [status, setStatus] = useState('idle'); // idle, rating, loading, success, error
-    const [errorMsg, setErrorMsg] = useState('');
-    const [hasAlreadySubmitted, setHasAlreadySubmitted] = useState(false);
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [message, setMessage] = React.useState('');
+    const [selectedRating, setSelectedRating] = React.useState(null);
+    const [status, setStatus] = React.useState('idle'); // idle, rating, loading, success, error
+    const [errorMsg, setErrorMsg] = React.useState('');
+    const [hasAlreadySubmitted, setHasAlreadySubmitted] = React.useState(false);
 
     const RATING_FACES = [
         { value: 1, emoji: '😠', label: 'Terrible' },
@@ -21,7 +22,7 @@ const FeedbackButton = ({ username }) => {
 
     // Filter out restricted names from the persistent check if needed, 
     // but usually we want to check for everyone
-    useEffect(() => {
+    React.useEffect(() => {
         const checkFeedbackStatus = async () => {
             if (!username) return;
             try {
@@ -37,7 +38,7 @@ const FeedbackButton = ({ username }) => {
     }, [username]);
 
     // Trigger feedback prompt after 1 minute (once per session)
-    useEffect(() => {
+    React.useEffect(() => {
         if (hasAlreadySubmitted) return;
 
         const hasPrompted = sessionStorage.getItem('feedback_prompted');

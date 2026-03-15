@@ -18,9 +18,9 @@ const getBaseURL = () => {
     return envURL;
   }
   
-  // In production, use current origin if no valid VITE_API_URL
+  // In production, ALWAYS use current origin to prevent domain mismatch
   if (import.meta.env.PROD) {
-    return typeof window !== 'undefined' ? window.location.origin : '';
+    return window.location.origin;
   }
   
   return 'http://localhost:5000';
@@ -57,7 +57,11 @@ export const formatError = (err) => {
   
   // If we still didn't find a string, check common Vercel/Cloudflare error shapes
   if (typeof msg === 'object') {
-    msg = msg.message || msg.error || JSON.stringify(msg);
+    try {
+      msg = msg.message || msg.error || JSON.stringify(msg);
+    } catch (e) {
+      msg = 'Detailed error info unavailable (circular reference)';
+    }
   }
   
   return typeof msg === 'string' ? msg : String(msg);

@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MessageSquare, Clock, User, Star } from 'lucide-react';
 import { API, api } from '../utils/api';
@@ -12,8 +13,8 @@ const RATING_FACES = {
 };
 
 const AdminFeedback = () => {
-    const [feedbacks, setFeedbacks] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [feedbacks, setFeedbacks] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
 
     const fetchFeedback = async () => {
         setLoading(true);
@@ -27,7 +28,7 @@ const AdminFeedback = () => {
         }
     };
 
-    useEffect(() => {
+    React.useEffect(() => {
         fetchFeedback();
     }, []);
 

@@ -36,29 +36,47 @@ const CATEGORY_TABS = [
   { id: 'grocery', label: 'Grocery List', icon: <ShoppingCart size={22} />, color: 'text-emerald-400', filter: 'grocery' },
 ];
 
-function App() {
+const App = () => {
   // ─── Authentication state ──────────────────────────────────────────
   const [username, setUsername] = useState(localStorage.getItem('todo_user') || '');
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
+  console.log('[App] Rendering...', { isInitializing, username, showModal });
+
   // Check auth on mount
   useEffect(() => {
     // Global error handler for production debugging
-    const handleError = (e) => logger.error('Global Runtime Error:', e);
+    const handleError = (e) => {
+      console.error('LOUD CRASH:', e);
+      const rootDiv = document.getElementById('root');
+      if (rootDiv) {
+        rootDiv.innerHTML = `
+          <div style="padding: 40px; background: #900; color: white; position: fixed; inset: 0; z-index: 999999; font-family: system-ui, sans-serif; overflow: auto;">
+            <h1 style="font-size: 2rem; margin-bottom: 20px;">🚀 App Crashed during Initialization</h1>
+            <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+              <p style="font-weight: bold; margin-bottom: 10px;">Error Message:</p>
+              <code style="display: block; background: #000; padding: 15px; border-radius: 8px;">${e.message || 'Unknown Error'}</code>
+            </div>
+            <p style="opacity: 0.8; margin-bottom: 20px;">Check browser console for full stack trace.</p>
+            <button onclick="window.location.reload()" style="background: white; color: #900; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem;">Try Reloading</button>
+          </div>
+        `;
+      }
+    };
     window.addEventListener('error', handleError);
 
     const checkAuth = async () => {
       try {
-        logger.info('Initializing auth check...');
+        console.log('[App] Initializing auth check...');
         const res = await api.get('/api/user/me');
         const confirmedUser = res.data.username;
         setUsername(confirmedUser);
         localStorage.setItem('todo_user', confirmedUser);
-        logger.info('Auth check successful:', confirmedUser);
+        console.log('[App] Auth check successful:', confirmedUser);
       } catch (err) {
-        logger.error('Auth check failed or no session:', formatError(err));
+        console.warn('[App] Auth check failed or no session:', formatError(err));
         setUsername('');
         localStorage.removeItem('todo_user');
         setShowModal(true);
