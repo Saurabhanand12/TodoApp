@@ -1,19 +1,26 @@
 const getBaseURL = () => {
-  const envURL = import.meta.env.VITE_API_URL;
-  if (envURL) {
-    // Ensure URL has a protocol if it's not relative
-    if (envURL.includes('.') && !envURL.startsWith('http')) {
+  let envURL = import.meta.env.VITE_API_URL;
+  
+  if (envURL && typeof envURL === 'string' && envURL.trim() !== '') {
+    envURL = envURL.trim();
+    
+    // Remove leading slash if it's followed by a domain-looking string
+    if (envURL.startsWith('/') && envURL.slice(1).includes('.')) {
+      envURL = envURL.slice(1);
+    }
+
+    // If it looks like a domain but lacks protocol
+    if (envURL.includes('.') && !envURL.startsWith('http') && !envURL.startsWith('/')) {
       return `https://${envURL}`;
     }
     return envURL;
   }
   
-  // In production, use the current origin if no VITE_API_URL is provided
+  // In production, use current origin if no valid VITE_API_URL
   if (import.meta.env.PROD) {
-    return window.location.origin;
+    return typeof window !== 'undefined' ? window.location.origin : '';
   }
   
-  // Local development fallback
   return 'http://localhost:5000';
 };
 
@@ -27,11 +34,13 @@ export const API = getBaseURL();
 export const formatError = (err) => {
   if (!err) return 'An unknown error occurred';
   
-  const msg = err.response?.data?.error || err.message || 'An unexpected error occurred';
+  // Axios error structure
+  let msg = err.response?.data?.error || err.response?.data?.message || err.message || 'An unexpected error occurred';
   
+  // If we still didn't find a string, check common Vercel/Cloudflare error shapes
   if (typeof msg === 'object') {
-    return JSON.stringify(msg);
+    msg = msg.message || msg.error || JSON.stringify(msg);
   }
   
-  return String(msg);
+  return typeof msg === 'string' ? msg : String(msg);
 };
