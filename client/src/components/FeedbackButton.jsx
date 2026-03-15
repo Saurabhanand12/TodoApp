@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
-import logger from '../utils/logger';
-import { API, formatError } from '../utils/api';
+import { API, api, formatError } from '../utils/api';
 
 const FeedbackButton = ({ username }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +24,7 @@ const FeedbackButton = ({ username }) => {
         const checkFeedbackStatus = async () => {
             if (!username) return;
             try {
-                const res = await axios.get(`${API}/api/feedback/check/${username}`);
+                const res = await api.get(`/api/feedback/check/${username}`);
                 if (res.data.hasSubmitted) {
                     setHasAlreadySubmitted(true);
                 }
@@ -66,7 +64,7 @@ const FeedbackButton = ({ username }) => {
         setStatus('loading');
 
         try {
-            await axios.post(`${API}/api/feedback`, {
+            await api.post('/api/feedback', {
                 username: username || 'anonymous',
                 message: trimmedMessage,
                 rating: ratingValue

@@ -17,6 +17,8 @@ const issueTokenCookie = (res, user) => {
         sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
+
+    return token;
 };
 
 // ─── Register ──────────────────────────────────────────────────────────────
@@ -48,10 +50,10 @@ const register = asyncHandler(async (req, res) => {
     const user = new User({ username: normalizedUsername, email: normalizedEmail, password });
     await user.save();
 
-    issueTokenCookie(res, user);
+    const token = issueTokenCookie(res, user);
     return sendSuccess(
         res,
-        { _id: user._id, username: user.username, email: user.email, message: 'Account created' },
+        { _id: user._id, username: user.username, email: user.email, token, message: 'Account created' },
         201
     );
 });
@@ -72,8 +74,8 @@ const login = asyncHandler(async (req, res) => {
         return sendError(res, 'Invalid credentials', 401);
     }
 
-    issueTokenCookie(res, user);
-    return sendSuccess(res, { _id: user._id, username: user.username, email: user.email });
+    const token = issueTokenCookie(res, user);
+    return sendSuccess(res, { _id: user._id, username: user.username, email: user.email, token });
 });
 
 // ─── Logout ───────────────────────────────────────────────────────────────

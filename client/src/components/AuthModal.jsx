@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, Mail, Eye, EyeOff, Sparkles, LogIn, UserPlus } from 'lucide-react';
 import axios from 'axios';
-import { API, formatError } from '../utils/api';
+import { API, api, formatError } from '../utils/api';
 
 const AuthModal = ({ onAuthSuccess }) => {
     const [isLogin, setIsLogin] = useState(true);
@@ -50,9 +50,9 @@ const AuthModal = ({ onAuthSuccess }) => {
                 : { username: username.trim(), email: email.trim().toLowerCase(), password };
 
 
-            const res = await axios.post(`${API}${endpoint}`, payload, { withCredentials: true });
+            const res = await api.post(endpoint, payload);
 
-            onAuthSuccess(res.data.username);
+            onAuthSuccess(res.data.username, res.data.token);
             setEmail('');
             setPassword('');
         } catch (err) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { API, formatError } from './utils/api';
+import { API, api, formatError } from './utils/api';
 import logger from './utils/logger';
 import MainLayout from './layouts/MainLayout';
 import DayColumn from './layouts/DayColumn';
@@ -47,7 +47,7 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await axios.get(`${API}/api/user/me`);
+        const res = await api.get('/api/user/me');
         const confirmedUser = res.data.username;
         setUsername(confirmedUser);
         localStorage.setItem('todo_user', confirmedUser);
@@ -87,7 +87,7 @@ function App() {
     if (!user) return;
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/api/tasks/${user}`);
+      const res = await api.get(`/api/tasks/${user}`);
       setTasks(res.data);
     } catch (err) {
       logger.error('Error fetching tasks:', err);
@@ -102,9 +102,10 @@ function App() {
   }, [username, fetchTasks]);
 
   // ─── Handle authentication set from modal ─────────────────────────
-  const handleAuthSuccess = useCallback((newUsername) => {
+  const handleAuthSuccess = useCallback((newUsername, token) => {
     setUsername(newUsername);
     localStorage.setItem('todo_user', newUsername);
+    if (token) localStorage.setItem('todo_token', token);
     setTasks([]);
     setShowModal(false);
     fetchTasks(newUsername);
@@ -113,9 +114,10 @@ function App() {
   // Handle Logout
   const handleLogout = useCallback(async () => {
     try {
-      await axios.post(`${API}/api/user/logout`);
+      await api.post('/api/user/logout');
       setUsername('');
       localStorage.removeItem('todo_user');
+      localStorage.removeItem('todo_token');
       setTasks([]);
       setShowModal(true);
     } catch (err) {
@@ -131,7 +133,7 @@ function App() {
   const performUsernameUpdate = async (newName) => {
     try {
       setLoading(true);
-      const res = await axios.put(`${API}/api/user/change-username`, {
+      const res = await api.put('/api/user/change-username', {
         newUsername: newName
       });
 
@@ -154,7 +156,7 @@ function App() {
   const handleAddTask = useCallback(async (text, category, date) => {
     if (!text || !username) return;
     try {
-      const res = await axios.post(`${API}/api/tasks`, {
+      const res = await api.post('/api/tasks', {
         text,
         username,
         category: category || 'personal',
@@ -172,7 +174,7 @@ function App() {
     try {
       // Optimistic
       setTasks(prev => prev.map(t => (t._id === id ? { ...t, isImportant: !t.isImportant } : t)));
-      const res = await axios.put(`${API}/api/tasks/${id}`, { isImportant: !task.isImportant });
+      const res = await api.put(`/api/tasks/${id}`, { isImportant: !task.isImportant });
       setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
     } catch (err) {
       logger.error('Error toggling important:', err);
@@ -183,7 +185,7 @@ function App() {
   // ─── Undo, Delete & Complete logic ────────────────────────────────────────
   const commitDelete = useCallback(async (id) => {
     try {
-      await axios.delete(`${API}/api/tasks/${id}`);
+      await api.delete(`/api/tasks/${id}`);
     } catch (err) {
       logger.error('Error committing delete:', err);
       if (username) fetchTasks(username);
@@ -235,7 +237,7 @@ function App() {
     setTasks(prev => prev.map(t => (t._id === id ? { ...t, completed: newCompletedState } : t)));
 
     try {
-      const res = await axios.put(`${API}/api/tasks/${id}`, { completed: newCompletedState });
+      const res = await api.put(`/api/tasks/${id}`, { completed: newCompletedState });
       setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
     } catch (err) {
       logger.error('Error committing complete:', err);
@@ -247,7 +249,7 @@ function App() {
     try {
       // Optimistic update
       setTasks(prev => prev.map(t => (t._id === id ? { ...t, ...updates } : t)));
-      const res = await axios.put(`${API}/api/tasks/${id}`, updates);
+      const res = await api.put(`/api/tasks/${id}`, updates);
       setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
     } catch (err) {
       logger.error('Error updating task:', err);
@@ -258,7 +260,7 @@ function App() {
   const handleDeleteCompleted = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.delete(`${API}/api/tasks/completed/${username}`);
+      const res = await api.delete(`/api/tasks/completed/${username}`);
       if (res.data.deletedCount > 0) {
         setTasks(prev => prev.filter(t => !t.completed));
       }
@@ -394,7 +396,7 @@ function App() {
       }));
 
       try {
-        await axios.put(`${API}/api/tasks/reorder/bulk`, { tasks: updates });
+        await api.put('/api/tasks/reorder/bulk', { tasks: updates });
       } catch (err) {
         logger.error('Failed to save manual order:', err);
         if (username) fetchTasks(username);

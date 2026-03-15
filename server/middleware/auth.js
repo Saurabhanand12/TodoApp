@@ -7,10 +7,15 @@ const { sendError } = require('../utils/apiResponse');
  * and attaches the decoded payload as req.user for downstream handlers.
  */
 const protect = (req, res, next) => {
-    const token = req.cookies?.auth_token;
+    let token = req.cookies?.auth_token;
+
+    // Fallback to Authorization header if cookie is missing
+    if (!token && req.headers.authorization?.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
 
     if (!token) {
-        console.warn(`[AUTH] Missing auth_token cookie for ${req.method} ${req.path}`);
+        console.warn(`[AUTH] Missing auth_token (cookie or header) for ${req.method} ${req.path}`);
         return sendError(res, 'No token, authorization denied', 401);
     }
 

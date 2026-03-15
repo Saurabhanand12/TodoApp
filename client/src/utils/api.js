@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 const getBaseURL = () => {
   let envURL = import.meta.env.VITE_API_URL;
   
@@ -25,6 +27,22 @@ const getBaseURL = () => {
 };
 
 export const API = getBaseURL();
+
+// Centralized Axios config with token interceptor
+export const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('todo_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
 /**
  * Ensures error is a string to prevent React Error #31 (Object as child)

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { MessageSquare, Clock, User, Star } from 'lucide-react';
-import logger from '../utils/logger';
-import { API } from '../utils/api';
+import { API, api } from '../utils/api';
 
 const RATING_FACES = {
     1: '😠',
@@ -19,7 +17,7 @@ const AdminFeedback = () => {
     const fetchFeedback = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`${API}/api/feedback`);
+            const res = await api.get('/api/feedback');
             setFeedbacks(res.data);
         } catch (err) {
             logger.error("Error fetching feedback:", err);
