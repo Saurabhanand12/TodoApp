@@ -13,8 +13,8 @@ const issueTokenCookie = (res, user) => {
 
     res.cookie('auth_token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: true, // Always true for https cross-origin cookies
+        sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 };
@@ -81,8 +81,8 @@ const login = asyncHandler(async (req, res) => {
 const logout = (req, res) => {
     res.clearCookie('auth_token', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: true,
+        sameSite: 'none',
     });
     return sendSuccess(res, { message: 'Logged out successfully' });
 };
