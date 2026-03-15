@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
 import logger from '../utils/logger';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API, formatError } from '../utils/api';
 
 const FeedbackButton = ({ username }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -86,7 +85,7 @@ const FeedbackButton = ({ username }) => {
 
         } catch (err) {
             setStatus('error');
-            setErrorMsg(err.response?.data?.error || 'Failed to send feedback. Please try again.');
+            setErrorMsg(formatError(err));
         }
     };
 

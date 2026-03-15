@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, Mail, Eye, EyeOff, Sparkles, LogIn, UserPlus } from 'lucide-react';
 import axios from 'axios';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API, formatError } from '../utils/api';
 
 const AuthModal = ({ onAuthSuccess }) => {
     const [isLogin, setIsLogin] = useState(true);
@@ -58,8 +57,7 @@ const AuthModal = ({ onAuthSuccess }) => {
             setPassword('');
         } catch (err) {
             // Authentication error handled via UI error state
-            const errorMessage = err.response?.data?.error || err.message || 'Authentication failed. Please try again.';
-            setError(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : String(errorMessage));
+            setError(formatError(err));
         } finally {
             setLoading(false);
         }

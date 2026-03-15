@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MessageSquare, Clock, User, Star } from 'lucide-react';
 import logger from '../utils/logger';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API } from '../utils/api';
 
 const RATING_FACES = {
     1: '😠',

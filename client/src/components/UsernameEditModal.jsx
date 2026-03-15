@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, X, Check, Loader2 } from 'lucide-react';
+import { formatError } from '../utils/api';
 
 const UsernameEditModal = ({ currentUsername, onSave, onCancel, loading: externalLoading }) => {
     const [newUsername, setNewUsername] = useState(currentUsername);
@@ -21,8 +22,7 @@ const UsernameEditModal = ({ currentUsername, onSave, onCancel, loading: externa
         try {
             await onSave(trimmed);
         } catch (err) {
-            const errorMessage = err.response?.data?.error || err.message || 'Failed to update username';
-            setError(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : String(errorMessage));
+            setError(formatError(err));
         } finally {
             setLocalLoading(false);
         }

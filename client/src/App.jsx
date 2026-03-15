@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
+import { API, formatError } from './utils/api';
 import logger from './utils/logger';
 import MainLayout from './layouts/MainLayout';
 import DayColumn from './layouts/DayColumn';
@@ -24,8 +25,7 @@ import { User, Briefcase, ShoppingCart, CheckSquare, Trash2 } from 'lucide-react
 import CustomCursor from './components/CustomCursor';
 import './index.css';
 
-const API = import.meta.env.VITE_API_URL || 
-  (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
+
 axios.defaults.withCredentials = true;
 
 // Category metadata (single source of truth)
