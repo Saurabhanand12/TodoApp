@@ -114,9 +114,14 @@ const App = () => {
     setLoading(true);
     try {
       const res = await api.get(`/api/tasks/${user}`);
-      setTasks(res.data);
+      if (Array.isArray(res.data)) {
+        setTasks(res.data);
+      } else {
+        console.error('[App] fetchTasks: Expected array, got:', typeof res.data, res.data);
+        setTasks([]); // Default to empty array to prevent crash
+      }
     } catch (err) {
-      logger.error('Error fetching tasks:', err);
+      console.error('[App] Error fetching tasks:', formatError(err));
     } finally {
       setLoading(false);
     }
