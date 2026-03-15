@@ -183,6 +183,22 @@ const App = () => {
     }
   };
 
+  // ─── Safe state updates (Defense in Depth) ──────────────────────────
+  const safeSetTasks = useCallback((dataOrUpdater) => {
+    if (typeof dataOrUpdater === 'function') {
+      setTasks(prev => {
+        const next = dataOrUpdater(prev);
+        return Array.isArray(next) ? next : prev;
+      });
+    } else {
+      if (Array.isArray(dataOrUpdater)) {
+        setTasks(dataOrUpdater);
+      } else {
+        console.warn('[App] safeSetTasks: Expected array, got:', typeof dataOrUpdater);
+      }
+    }
+  }, []);
+
   // ─── Task operations ──────────────────────────────────────────────
   const handleAddTask = useCallback(async (text, category, date) => {
     if (!text || !username) return;
@@ -193,25 +209,29 @@ const App = () => {
         category: category || 'personal',
         due_date: date ? new Date(date) : new Date()
       });
-      setTasks(prev => [res.data, ...prev]);
+      if (res.data && res.data._id) {
+        safeSetTasks(prev => [res.data, ...prev]);
+      }
     } catch (err) {
-      logger.error('Error adding task:', err);
+      console.error('Error adding task:', formatError(err));
     }
-  }, [username]);
+  }, [username, safeSetTasks]);
 
   const toggleImportant = useCallback(async (id) => {
     const task = tasks.find(t => t._id === id);
     if (!task) return;
     try {
       // Optimistic
-      setTasks(prev => prev.map(t => (t._id === id ? { ...t, isImportant: !t.isImportant } : t)));
+      safeSetTasks(prev => prev.map(t => (t._id === id ? { ...t, isImportant: !t.isImportant } : t)));
       const res = await api.put(`/api/tasks/${id}`, { isImportant: !task.isImportant });
-      setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+      if (res.data && res.data._id) {
+        safeSetTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+      }
     } catch (err) {
-      logger.error('Error toggling important:', err);
+      console.error('Error toggling important:', formatError(err));
       if (username) fetchTasks(username);
     }
-  }, [tasks, username, fetchTasks]);
+  }, [tasks, username, fetchTasks, safeSetTasks]);
 
   // ─── Undo, Delete & Complete logic ────────────────────────────────────────
   const commitDelete = useCallback(async (id) => {
@@ -242,7 +262,7 @@ const App = () => {
     }
 
     // Optimistic update
-    setTasks(prev => prev.filter(t => t._id !== id));
+    safeSetTasks(prev => prev.filter(t => t._id !== id));
 
     const timeoutId = setTimeout(() => {
       if (undoTaskRef.current && undoTaskRef.current._id === id) {
@@ -256,7 +276,7 @@ const App = () => {
     undoTaskRef.current = task;
     undoTimeoutRef.current = timeoutId;
     setUndoQueue({ task, timeoutId, action: 'delete' });
-  }, [tasks, processPendingUndo, commitDelete]);
+  }, [tasks, processPendingUndo, commitDelete, safeSetTasks]);
 
   const toggleComplete = useCallback(async (id) => {
     const task = tasks.find(t => t._id === id);
@@ -265,28 +285,32 @@ const App = () => {
     const newCompletedState = !task.completed;
 
     // Optimistic update
-    setTasks(prev => prev.map(t => (t._id === id ? { ...t, completed: newCompletedState } : t)));
+    safeSetTasks(prev => prev.map(t => (t._id === id ? { ...t, completed: newCompletedState } : t)));
 
     try {
       const res = await api.put(`/api/tasks/${id}`, { completed: newCompletedState });
-      setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+      if (res.data && res.data._id) {
+        safeSetTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+      }
     } catch (err) {
-      logger.error('Error committing complete:', err);
+      console.error('Error committing complete:', formatError(err));
       if (username) fetchTasks(username);
     }
-  }, [tasks, username, fetchTasks]);
+  }, [tasks, username, fetchTasks, safeSetTasks]);
 
   const handleUpdateTask = useCallback(async (id, updates) => {
     try {
       // Optimistic update
-      setTasks(prev => prev.map(t => (t._id === id ? { ...t, ...updates } : t)));
+      safeSetTasks(prev => prev.map(t => (t._id === id ? { ...t, ...updates } : t)));
       const res = await api.put(`/api/tasks/${id}`, updates);
-      setTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+      if (res.data && res.data._id) {
+        safeSetTasks(prev => prev.map(t => (t._id === id ? res.data : t)));
+      }
     } catch (err) {
-      logger.error('Error updating task:', err);
+      console.error('Error updating task:', formatError(err));
       if (username) fetchTasks(username);
     }
-  }, [username, fetchTasks]);
+  }, [username, fetchTasks, safeSetTasks]);
 
   const handleDeleteCompleted = useCallback(async () => {
     try {
