@@ -1,10 +1,9 @@
 import axios from 'axios';
 
 const getBaseURL = () => {
-  // In production, ALWAYS use current origin to prevent domain mismatch
-  // This is the highest priority fix for the 401/CORS issues on Vercel
+  // In production, force all API calls to the current domain's /api route
   if (import.meta.env.PROD) {
-    return typeof window !== 'undefined' ? window.location.origin : '';
+    return '/'; // RELATIVE TO DOMAIN
   }
 
   let envURL = import.meta.env.VITE_API_URL;
