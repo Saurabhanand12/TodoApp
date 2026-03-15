@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 
 const CustomCursor = () => {
-    const [isHovering, setIsHovering] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
-    const [isVisible, setIsVisible] = useState(false);
+    const [isHovering, setIsHovering] = React.useState(false);
+    const [isDragging, setIsDragging] = React.useState(false);
+    const [isVisible, setIsVisible] = React.useState(false);
 
     const cursorX = useMotionValue(-100);
     const cursorY = useMotionValue(-100);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const moveCursor = (e) => {
             cursorX.set(e.clientX);
             cursorY.set(e.clientY);

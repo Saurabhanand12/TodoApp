@@ -3,9 +3,9 @@ import { User, X, Check, Loader2 } from 'lucide-react';
 import { formatError } from '../utils/api';
 
 const UsernameEditModal = ({ currentUsername, onSave, onCancel, loading: externalLoading }) => {
-    const [newUsername, setNewUsername] = useState(currentUsername);
-    const [error, setError] = useState('');
-    const [localLoading, setLocalLoading] = useState(false);
+    const [newUsername, setNewUsername] = React.useState(currentUsername);
+    const [error, setError] = React.useState('');
+    const [localLoading, setLocalLoading] = React.useState(false);
 
     const loading = externalLoading || localLoading;
 

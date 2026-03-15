@@ -10,10 +10,10 @@ const CATEGORY_META = {
 };
 
 const TaskCard = ({ task, onToggleComplete, onToggleImportant, onDelete, onUpdateTask, onDragStart, onDragOverCard, onDropOnCard }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editText, setEditText] = useState(task.text);
-    const [isDragTarget, setIsDragTarget] = useState(false);
-    const inputRef = useRef(null);
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editText, setEditText] = React.useState(task.text);
+    const [isDragTarget, setIsDragTarget] = React.useState(false);
+    const inputRef = React.useRef(null);
     const catMeta = CATEGORY_META[task.category] || CATEGORY_META.personal;
 
     const {

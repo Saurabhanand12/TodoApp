@@ -3,7 +3,7 @@ import Sidebar from './Sidebar';
 import { Menu, X, LogOut } from 'lucide-react';
 
 const MainLayout = ({ children, activeTab, setActiveTab, username, onEditUsername, counts, onLogout }) => {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     return (
         <div className="flex h-[100dvh] w-full bg-[#0a0a0a] overflow-hidden text-gray-200 font-sans relative selection:bg-purple-500/30">

@@ -38,10 +38,10 @@ const CATEGORY_TABS = [
 
 const App = () => {
   // ─── Authentication state ──────────────────────────────────────────
-  const [username, setUsername] = useState(localStorage.getItem('todo_user') || '');
-  const [showModal, setShowModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [username, setUsername] = React.useState(localStorage.getItem('todo_user') || '');
+  const [showModal, setShowModal] = React.useState(false);
+  const [showEditModal, setShowEditModal] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(true);
 
   console.log('[App] Rendering...', { isInitializing, username, showModal });
 

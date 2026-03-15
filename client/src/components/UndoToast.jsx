@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
 const UndoToast = ({ undoTask, undoAction, onUndo, onDismiss }) => {
-    const [progress, setProgress] = useState(100);
+    const [progress, setProgress] = React.useState(100);
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (!undoTask) return;
 
         // Start animation after a tiny delay to ensure CSS transition triggers

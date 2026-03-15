@@ -4,13 +4,13 @@ import axios from 'axios';
 import { API, api, formatError } from '../utils/api';
 
 const AuthModal = ({ onAuthSuccess }) => {
-    const [isLogin, setIsLogin] = useState(true);
-    const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [isLogin, setIsLogin] = React.useState(true);
+    const [username, setUsername] = React.useState('');
+    const [email, setEmail] = React.useState('');
+    const [password, setPassword] = React.useState('');
+    const [showPassword, setShowPassword] = React.useState(false);
+    const [error, setError] = React.useState('');
+    const [loading, setLoading] = React.useState(false);
 
     const validateEmail = (mail) => {
         return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(mail);

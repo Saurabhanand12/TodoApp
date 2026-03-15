@@ -8,8 +8,9 @@ import App from './App.jsx'
 window.onerror = (msg, url, line, col, error) => {
   console.error('GLOBAL ERROR:', { msg, url, line, col, error });
   // Force a visible error if our React app hasn't mounted
-  if (!document.getElementById('root').innerHTML.trim()) {
-    document.getElementById('root').innerHTML = `
+  const rootDiv = document.getElementById('root');
+  if (rootDiv && !rootDiv.innerHTML.trim()) {
+    rootDiv.innerHTML = `
       <div style="padding: 20px; background: #800; color: white; font-family: sans-serif;">
         <h1 style="margin:0">App Launch Failed</h1>
         <p style="opacity:0.8">${msg}</p>
@@ -18,12 +19,6 @@ window.onerror = (msg, url, line, col, error) => {
     `;
   }
 };
-
-try {
-  inject();
-} catch (e) {
-  console.warn('Vercel Analytics failed to initialize', e);
-}
 
 const root = createRoot(document.getElementById('root'));
 root.render(
