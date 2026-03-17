@@ -38,7 +38,15 @@ const CATEGORY_TABS = [
 
 const App = () => {
   // ─── Authentication state ──────────────────────────────────────────
-  const [username, setUsername] = React.useState(localStorage.getItem('todo_user') || '');
+  const [username, setUsername] = React.useState(() => {
+    const saved = localStorage.getItem('todo_user');
+    // Clear garbage from previous failed attempts
+    if (saved === 'undefined' || saved === 'null' || saved === '[object Object]') {
+      localStorage.removeItem('todo_user');
+      return '';
+    }
+    return saved || '';
+  });
   const [showModal, setShowModal] = React.useState(false);
   const [showEditModal, setShowEditModal] = React.useState(false);
   const [isInitializing, setIsInitializing] = React.useState(true);
@@ -71,10 +79,18 @@ const App = () => {
       try {
         console.log('[App] Initializing auth check...');
         const res = await api.get('/api/user/me');
-        const confirmedUser = res.data.username;
-        setUsername(confirmedUser);
-        localStorage.setItem('todo_user', confirmedUser);
-        console.log('[App] Auth check successful:', confirmedUser);
+        
+        // Robust check: Ensure we got a JSON object with a username, not HTML source
+        if (res.data && typeof res.data === 'object' && res.data.username) {
+          const confirmedUser = res.data.username;
+          setUsername(confirmedUser);
+          localStorage.setItem('todo_user', confirmedUser);
+          console.log('[App] Auth check successful:', confirmedUser);
+        } else {
+          // If we got HTML or a bad shape, treat as not logged in
+          console.warn('[App] Invalid auth response shape. Treating as guest.');
+          throw new Error('Invalid authentication response');
+        }
       } catch (err) {
         console.warn('[App] Auth check failed or no session:', formatError(err));
         setUsername('');

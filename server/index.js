@@ -1,5 +1,6 @@
 // ── Load .env FIRST — before anything else ──────────────────────────────────
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const express = require('express');
 const cors = require('cors');
@@ -21,7 +22,7 @@ const allowedOrigins = [
     FRONTEND_URL,
     'https://todo-app-twq2.vercel.app',
     'https://todo-app-twq2-k4qwqa3k2-saurabh-anand-s-projects-3b82a62b.vercel.app',
-    'https://todo-app-frontend-kohl.vercel.app',
+    'https://todo-app-rosy-eta-61.vercel.app',
 ];
 
 const corsOptions = {
@@ -133,6 +134,10 @@ app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/feedback', require('./routes/feedback'));
 
 // Health check
+app.get('/api/health', (req, res) => {
+    res.json({ success: true, message: 'Todo API is healthy!', timestamp: new Date() });
+});
+
 app.get('/', (req, res) => {
     res.json({ success: true, message: 'Todo API is running!', version: '2.0.0' });
 });
@@ -155,4 +160,5 @@ if (!process.env.VERCEL && !isProduction) {
 
 // Export for Vercel serverless
 module.exports = app;
+
 

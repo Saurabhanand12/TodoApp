@@ -1,40 +1,39 @@
 const Feedback = require('../models/Feedback');
-const asyncHandler = require('../utils/asyncHandler');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
+const asyncHandler = require('../utils/asyncHandler');
 
-// ─── Submit feedback ─────────────────────────────────────────────────────
-
-const submitFeedback = asyncHandler(async (req, res) => {
+// @desc    Submit feedback
+// @route   POST /api/feedback
+// @access  Public/Private (depending on frontend use)
+exports.submitFeedback = asyncHandler(async (req, res) => {
     const { username, message, rating } = req.body;
 
-    if (!message || !message.trim()) {
-        return sendError(res, 'Feedback message is required', 400);
+    if (!username || !message) {
+        return sendError(res, 'Username and message are required', 400);
     }
 
-    const newFeedback = new Feedback({
-        username: username ? username.trim().toLowerCase() : 'anonymous',
-        message: message.trim(),
-        rating: typeof rating === 'number' ? rating : undefined,
+    const feedback = await Feedback.create({
+        username: username.toLowerCase(),
+        message,
+        rating
     });
 
-    await newFeedback.save();
-    return sendSuccess(res, { message: 'Feedback submitted successfully' }, 201);
+    sendSuccess(res, feedback, 201);
 });
 
-// ─── Get all feedback ─────────────────────────────────────────────────────
-
-const getFeedback = asyncHandler(async (req, res) => {
-    const feedbacks = await Feedback.find().sort({ createdAt: -1 }).lean();
-    return sendSuccess(res, feedbacks);
+// @desc    Get all feedback (Admin view)
+// @route   GET /api/feedback
+// @access  Private
+exports.getFeedback = asyncHandler(async (req, res) => {
+    // In a real app, we'd check req.user.role === 'admin'
+    const feedbackList = await Feedback.find().sort({ createdAt: -1 });
+    sendSuccess(res, feedbackList);
 });
 
-// ─── Check if user submitted feedback ────────────────────────────────────
-
-const checkFeedback = asyncHandler(async (req, res) => {
-    const feedback = await Feedback.findOne({
-        username: req.params.username.toLowerCase(),
-    }).lean();
-    return sendSuccess(res, { hasSubmitted: !!feedback });
+// @desc    Check if user has submitted feedback (optional utility)
+// @route   GET /api/feedback/check/:username
+// @access  Private
+exports.checkFeedback = asyncHandler(async (req, res) => {
+    const hasFeedback = await Feedback.exists({ username: req.params.username.toLowerCase() });
+    sendSuccess(res, { hasSubmitted: !!hasFeedback });
 });
-
-module.exports = { submitFeedback, getFeedback, checkFeedback };

@@ -1,129 +1,137 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const Todo = require('../models/Todo');
-const Feedback = require('../models/Feedback');
-const asyncHandler = require('../utils/asyncHandler');
-const { sendSuccess, sendError } = require('../utils/apiResponse');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/env');
+const { sendSuccess, sendError } = require('../utils/apiResponse');
+const asyncHandler = require('../utils/asyncHandler');
 
-// ─── Helper ────────────────────────────────────────────────────────────────
-
-const issueTokenCookie = (res, user) => {
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-    res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: true, // Always true for https cross-origin cookies
-        sameSite: 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+// ─── Generate Token Helper ───────────────────────────────────────────────────
+const generateToken = (userId) => {
+    return jwt.sign({ id: userId }, JWT_SECRET, {
+        expiresIn: JWT_EXPIRES_IN,
     });
-
-    return token;
 };
 
-// ─── Register ──────────────────────────────────────────────────────────────
+// ─── Set Token Cookie Helper ──────────────────────────────────────────────────
+const setTokenCookie = (res, token) => {
+    const cookieOptions = {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days matching standard JWT_EXPIRES_IN
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    };
+    res.cookie('auth_token', token, cookieOptions);
+};
 
-const register = asyncHandler(async (req, res) => {
+// @desc    Register user
+// @route   POST /api/user/register
+// @access  Public
+exports.register = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
-        return sendError(res, 'Username, email and password are required', 400);
-    }
-    if (password.length < 6) {
-        return sendError(res, 'Password must be at least 6 characters', 400);
-    }
-
-    const normalizedUsername = username.trim().toLowerCase();
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const userExists = await User.findOne({
-        $or: [{ username: normalizedUsername }, { email: normalizedEmail }],
+    // Check if user exists
+    const userExists = await User.findOne({ 
+        $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }] 
     });
 
     if (userExists) {
-        if (userExists.email === normalizedEmail) {
-            return sendError(res, 'Email already registered', 400);
-        }
-        return sendError(res, 'Username already taken', 400);
+        return sendError(res, 'User with this email or username already exists', 400);
     }
 
-    const user = new User({ username: normalizedUsername, email: normalizedEmail, password });
-    await user.save();
-
-    const token = issueTokenCookie(res, user);
-    return sendSuccess(
-        res,
-        { _id: user._id, username: user.username, email: user.email, token, message: 'Account created' },
-        201
-    );
-});
-
-// ─── Login ────────────────────────────────────────────────────────────────
-
-const login = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return sendError(res, 'Email/Username and password are required', 400);
-    }
-
-    const identifier = email.trim().toLowerCase();
-    const user = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
-
-    if (!user || !(await user.matchPassword(password))) {
-        return sendError(res, 'Invalid credentials', 401);
-    }
-
-    const token = issueTokenCookie(res, user);
-    return sendSuccess(res, { _id: user._id, username: user.username, email: user.email, token });
-});
-
-// ─── Logout ───────────────────────────────────────────────────────────────
-
-const logout = (req, res) => {
-    res.clearCookie('auth_token', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
+    // Create user
+    const user = await User.create({
+        username,
+        email,
+        password,
     });
-    return sendSuccess(res, { message: 'Logged out successfully' });
+
+    if (user) {
+        const token = generateToken(user._id);
+        setTokenCookie(res, token);
+
+        sendSuccess(res, {
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+        }, 201);
+    } else {
+        sendError(res, 'Invalid user data', 400);
+    }
+});
+
+// @desc    Login user
+// @route   POST /api/user/login
+// @access  Public
+exports.login = asyncHandler(async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return sendError(res, 'Please provide username and password', 400);
+    }
+
+    // Check for user (select password because it's excluded by default if someone changed the schema or for safety)
+    const user = await User.findOne({ username: username.toLowerCase() }).select('+password');
+
+    if (user && (await user.matchPassword(password))) {
+        const token = generateToken(user._id);
+        setTokenCookie(res, token);
+
+        sendSuccess(res, {
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+        });
+    } else {
+        sendError(res, 'Invalid credentials', 401);
+    }
+});
+
+// @desc    Logout user / clear cookie
+// @route   POST /api/user/logout
+// @access  Public
+exports.logout = (req, res) => {
+    res.cookie('auth_token', 'none', {
+        expires: new Date(Date.now() + 10 * 1000),
+        httpOnly: true,
+    });
+    sendSuccess(res, { message: 'Logged out successfully' });
 };
 
-// ─── Get Current User ─────────────────────────────────────────────────────
-
-const getMe = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) return sendError(res, 'User not found', 404);
-    return sendSuccess(res, user);
+// @desc    Get current user profile
+// @route   GET /api/user/me
+// @access  Private
+exports.getMe = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id);
+    if (user) {
+        sendSuccess(res, user);
+    } else {
+        sendError(res, 'User not found', 404);
+    }
 });
 
-// ─── Change Username ──────────────────────────────────────────────────────
-
-const changeUsername = asyncHandler(async (req, res) => {
+// @desc    Change username
+// @route   PUT /api/user/change-username
+// @access  Private
+exports.changeUsername = asyncHandler(async (req, res) => {
     const { newUsername } = req.body;
 
-    if (!newUsername || !newUsername.trim()) {
-        return sendError(res, 'New username is required', 400);
+    if (!newUsername) {
+        return sendError(res, 'Please provide a new username', 400);
     }
 
-    const normalizedNew = newUsername.trim().toLowerCase();
-
-    const existing = await User.findOne({ username: normalizedNew });
-    if (existing) return sendError(res, 'Username already taken', 400);
-
     const user = await User.findById(req.user.id);
-    if (!user) return sendError(res, 'User not found', 404);
 
-    const oldUsername = user.username;
-    user.username = normalizedNew;
+    if (!user) {
+        return sendError(res, 'User not found', 404);
+    }
+
+    // Check if new username is taken
+    const usernameExists = await User.findOne({ username: newUsername.toLowerCase() });
+    if (usernameExists) {
+        return sendError(res, 'Username is already taken', 400);
+    }
+
+    user.username = newUsername;
     await user.save();
 
-    await Promise.all([
-        Todo.updateMany({ username: oldUsername }, { username: normalizedNew }),
-        Feedback.updateMany({ username: oldUsername }, { username: normalizedNew }),
-    ]);
-
-    return sendSuccess(res, { username: normalizedNew, message: 'Username updated successfully' });
+    sendSuccess(res, user);
 });
-
-module.exports = { register, login, logout, getMe, changeUsername };

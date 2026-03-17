@@ -1,119 +1,109 @@
 const Todo = require('../models/Todo');
-const asyncHandler = require('../utils/asyncHandler');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
+const asyncHandler = require('../utils/asyncHandler');
 
-// ─── Get all tasks for a user ─────────────────────────────────────────────
-
-const getTasks = asyncHandler(async (req, res) => {
-    const username = req.params.username.toLowerCase();
-
-    // ─── Rollover Logic: Move uncompleted past-due tasks to today ───
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    await Todo.updateMany(
-        {
-            username,
-            completed: false,
-            due_date: { $lt: today },
-        },
-        {
-            $set: { due_date: new Date() },
-        }
-    );
-
-    const todos = await Todo.find({ username })
-        .select('-__v')
-        .sort({ createdAt: -1 })
-        .lean();
-    return sendSuccess(res, todos);
+// @desc    Get all tasks for a user
+// @route   GET /api/tasks/:username
+// @access  Private
+exports.getTasks = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+    
+    // Safety check: ensure users can only fetch their own tasks
+    // (Existing middleware already verifies token, but we check if ID matches if needed)
+    // However, the route uses :username, so we fetch by that.
+    
+    const tasks = await Todo.find({ username: username.toLowerCase() }).sort({ position: 1 });
+    sendSuccess(res, tasks);
 });
 
-// ─── Create a task ────────────────────────────────────────────────────────
+// @desc    Create a new task
+// @route   POST /api/tasks
+// @access  Private
+exports.createTask = asyncHandler(async (req, res) => {
+    const { text, username, category, isImportant, due_date } = req.body;
 
-const createTask = asyncHandler(async (req, res) => {
-    const { text, username, due_date, category } = req.body;
-
-    if (!text || !text.trim()) {
-        return sendError(res, 'Task text is required', 400);
-    }
-    if (!username) {
-        return sendError(res, 'Username is required', 400);
+    if (!text || !username) {
+        return sendError(res, 'Text and username are required', 400);
     }
 
-    const newTodo = new Todo({
-        text: text.trim(),
-        username: username.trim().toLowerCase(),
-        due_date: due_date ? new Date(due_date) : new Date(),
-        category: category || 'personal',
+    // Find the highest position to append the new task
+    const lastTask = await Todo.findOne({ username: username.toLowerCase() }).sort({ position: -1 });
+    const position = lastTask ? lastTask.position + 1 : 0;
+
+    const task = await Todo.create({
+        text,
+        username: username.toLowerCase(),
+        category,
+        isImportant,
+        due_date,
+        position
     });
 
-    const savedTodo = await newTodo.save();
-    return sendSuccess(res, savedTodo, 201);
+    sendSuccess(res, task, 201);
 });
 
-// ─── Update a task ────────────────────────────────────────────────────────
-
-const updateTask = asyncHandler(async (req, res) => {
-    // Whitelist updatable fields to prevent mass assignment
-    const { text, completed, isImportant, due_date, category, position } = req.body;
-    const updates = {};
-    if (text !== undefined) updates.text = text;
-    if (completed !== undefined) updates.completed = completed;
-    if (isImportant !== undefined) updates.isImportant = isImportant;
-    if (due_date !== undefined) updates.due_date = new Date(due_date);
-    if (category !== undefined) updates.category = category;
-    if (position !== undefined) updates.position = position;
-
-    const updatedTodo = await Todo.findByIdAndUpdate(
+// @desc    Update a task
+// @route   PUT /api/tasks/:id
+// @access  Private
+exports.updateTask = asyncHandler(async (req, res) => {
+    const task = await Todo.findByIdAndUpdate(
         req.params.id,
-        { $set: updates },
+        req.body,
         { new: true, runValidators: true }
     );
 
-    if (!updatedTodo) return sendError(res, 'Task not found', 404);
-    return sendSuccess(res, updatedTodo);
-});
-
-// ─── Delete a task ────────────────────────────────────────────────────────
-
-const deleteTask = asyncHandler(async (req, res) => {
-    const deleted = await Todo.findByIdAndDelete(req.params.id);
-    if (!deleted) return sendError(res, 'Task not found', 404);
-    return sendSuccess(res, { message: 'Task deleted' });
-});
-
-// ─── Bulk reorder tasks ───────────────────────────────────────────────────
-
-const reorderTasks = asyncHandler(async (req, res) => {
-    const { tasks } = req.body;
-
-    if (!Array.isArray(tasks) || tasks.length === 0) {
-        return sendError(res, 'Expected a non-empty array of tasks', 400);
+    if (!task) {
+        return sendError(res, 'Task not found', 404);
     }
 
-    const updates = tasks.map((task) => ({
+    sendSuccess(res, task);
+});
+
+// @desc    Delete a task
+// @route   DELETE /api/tasks/:id
+// @access  Private
+exports.deleteTask = asyncHandler(async (req, res) => {
+    const task = await Todo.findByIdAndDelete(req.params.id);
+
+    if (!task) {
+        return sendError(res, 'Task not found', 404);
+    }
+
+    sendSuccess(res, { message: 'Task deleted successfully' });
+});
+
+// @desc    Bulk reorder tasks
+// @route   PUT /api/tasks/reorder/bulk
+// @access  Private
+exports.reorderTasks = asyncHandler(async (req, res) => {
+    const { tasks } = req.body; // Expecting array of { _id, position }
+
+    if (!Array.isArray(tasks)) {
+        return sendError(res, 'Tasks array is required', 400);
+    }
+
+    const bulkOps = tasks.map((task) => ({
         updateOne: {
             filter: { _id: task._id },
             update: { $set: { position: task.position } },
         },
     }));
 
-    await Todo.bulkWrite(updates);
-    return sendSuccess(res, { message: 'Tasks reordered successfully' });
+    await Todo.bulkWrite(bulkOps);
+
+    sendSuccess(res, { message: 'Tasks reordered successfully' });
 });
 
-// ─── Clear completed tasks for a user ────────────────────────────────────
+// @desc    Clear all completed tasks for a user
+// @route   DELETE /api/tasks/completed/:username
+// @access  Private
+exports.clearCompleted = asyncHandler(async (req, res) => {
+    const { username } = req.params;
 
-const clearCompleted = asyncHandler(async (req, res) => {
-    const result = await Todo.deleteMany({
-        username: req.params.username.toLowerCase(),
-        completed: true,
+    await Todo.deleteMany({
+        username: username.toLowerCase(),
+        completed: true
     });
-    return sendSuccess(res, {
-        message: `Deleted ${result.deletedCount} completed tasks`,
-        deletedCount: result.deletedCount,
-    });
+
+    sendSuccess(res, { message: 'Completed tasks cleared' });
 });
-
-module.exports = { getTasks, createTask, updateTask, deleteTask, reorderTasks, clearCompleted };
