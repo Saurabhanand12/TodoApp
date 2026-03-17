@@ -17,6 +17,6 @@
     "mongoose": "^7.0.3"
   },
   "scripts": {
-    "build": "cd client && npm install && npm run build && cd .. && New-Item -ItemType Directory -Force -Path dist && Copy-Item -Path client\\dist\\* -Destination dist\\ -Recurse -Force"
+    "build": "cd client && npm install && npm run build && cd .. && mkdir -p dist && cp -r client/dist/* dist/"
   }
 }
