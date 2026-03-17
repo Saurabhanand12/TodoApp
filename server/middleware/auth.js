@@ -14,8 +14,12 @@ const protect = (req, res, next) => {
         token = req.headers.authorization.split(' ')[1];
     }
 
+    // Defensive check: handle cases where token might be stringified "null" or "undefined"
+    if (token === 'null' || token === 'undefined') {
+        token = null;
+    }
+
     if (!token) {
-        console.warn(`[AUTH] Missing auth_token (cookie or header) for ${req.method} ${req.path}`);
         return sendError(res, 'No token, authorization denied', 401);
     }
 

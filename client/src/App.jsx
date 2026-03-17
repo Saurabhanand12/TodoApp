@@ -51,7 +51,7 @@ const App = () => {
   const [showEditModal, setShowEditModal] = React.useState(false);
   const [isInitializing, setIsInitializing] = React.useState(true);
 
-  console.log('[App] Rendering...', { isInitializing, username, showModal });
+
 
   // Check auth on mount
   useEffect(() => {
@@ -77,7 +77,7 @@ const App = () => {
 
     const checkAuth = async () => {
       try {
-        console.log('[App] Initializing auth check...');
+
         const res = await api.get('/api/user/me');
         
         // Robust check: Ensure we got a JSON object with a username, not HTML source
@@ -85,14 +85,14 @@ const App = () => {
           const confirmedUser = res.data.username;
           setUsername(confirmedUser);
           localStorage.setItem('todo_user', confirmedUser);
-          console.log('[App] Auth check successful:', confirmedUser);
+
         } else {
           // If we got HTML or a bad shape, treat as not logged in
-          console.warn('[App] Invalid auth response shape. Treating as guest.');
+
           throw new Error('Invalid authentication response');
         }
       } catch (err) {
-        console.warn('[App] Auth check failed or no session:', formatError(err));
+
         setUsername('');
         localStorage.removeItem('todo_user');
         setShowModal(true);
@@ -131,13 +131,17 @@ const App = () => {
     try {
       const res = await api.get(`/api/tasks/${user}`);
       if (Array.isArray(res.data)) {
-        setTasks(res.data);
+        // Filter out tasks that are currently being "undone" (optimistically deleted)
+        const filteredTasks = undoTaskRef.current 
+          ? res.data.filter(t => t._id !== undoTaskRef.current._id)
+          : res.data;
+          
+        setTasks(filteredTasks);
       } else {
-        console.error('[App] fetchTasks: Expected array, got:', typeof res.data, res.data);
         setTasks([]); // Default to empty array to prevent crash
       }
     } catch (err) {
-      console.error('[App] Error fetching tasks:', formatError(err));
+      // Error is handled by global interceptor or silent failure for bg fetch
     } finally {
       setLoading(false);
     }
@@ -210,7 +214,7 @@ const App = () => {
       if (Array.isArray(dataOrUpdater)) {
         setTasks(dataOrUpdater);
       } else {
-        console.warn('[App] safeSetTasks: Expected array, got:', typeof dataOrUpdater);
+
       }
     }
   }, []);
@@ -329,19 +333,30 @@ const App = () => {
   }, [username, fetchTasks, safeSetTasks]);
 
   const handleDeleteCompleted = useCallback(async () => {
+    if (!username) return;
+
+    // Capture state before optimistic update
+    const previousTasks = [...tasks];
+
     try {
-      setLoading(true);
+      // Optimistic update
+      setTasks(prev => prev.filter(t => !t.completed));
+
       const res = await api.delete(`/api/tasks/completed/${username}`);
-      if (res.data.deletedCount > 0) {
-        setTasks(prev => prev.filter(t => !t.completed));
+      
+      // If server reports no deletion (maybe out of sync), we could refetch,
+      // but usually the local state is more current for the user's intent.
+      if (res.data.deletedCount === 0 && previousTasks.some(t => t.completed)) {
+        logger.info('Server reported 0 tasks deleted, resyncing...');
+        fetchTasks(username);
       }
     } catch (err) {
       logger.error('Error deleting completed tasks:', err);
+      // Revert on error
+      setTasks(previousTasks);
       if (username) fetchTasks(username);
-    } finally {
-      setLoading(false);
     }
-  }, [username, fetchTasks]);
+  }, [username, tasks, fetchTasks]);
 
   const handleUndo = useCallback(() => {
     if (!undoTaskRef.current) return;

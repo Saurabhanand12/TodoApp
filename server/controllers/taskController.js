@@ -1,4 +1,5 @@
 const Todo = require('../models/Todo');
+const User = require('../models/User');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -8,9 +9,27 @@ const asyncHandler = require('../utils/asyncHandler');
 exports.getTasks = asyncHandler(async (req, res) => {
     const { username } = req.params;
     
-    // Safety check: ensure users can only fetch their own tasks
-    // (Existing middleware already verifies token, but we check if ID matches if needed)
-    // However, the route uses :username, so we fetch by that.
+    // SECURITY FIX: Verify that the authenticated user matches the requested username
+    // We check either the user ID in token or fetch the user to compare names
+    const user = await User.findById(req.user.id);
+    if (!user || user.username.toLowerCase() !== username.toLowerCase()) {
+        return sendError(res, 'Not authorized to access these tasks', 403);
+    }
+
+    // Carry forward incomplete tasks with past due dates to today
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    await Todo.updateMany(
+        {
+            username: username.toLowerCase(),
+            completed: false,
+            due_date: { $lt: startOfToday }
+        },
+        {
+            $set: { due_date: new Date() }
+        }
+    );
     
     const tasks = await Todo.find({ username: username.toLowerCase() }).sort({ position: 1 });
     sendSuccess(res, tasks);
@@ -24,6 +43,12 @@ exports.createTask = asyncHandler(async (req, res) => {
 
     if (!text || !username) {
         return sendError(res, 'Text and username are required', 400);
+    }
+
+    // SECURITY FIX: Verify identity
+    const user = await User.findById(req.user.id);
+    if (!user || user.username.toLowerCase() !== username.toLowerCase()) {
+        return sendError(res, 'Not authorized to create tasks for this user', 403);
     }
 
     // Find the highest position to append the new task
@@ -46,15 +71,20 @@ exports.createTask = asyncHandler(async (req, res) => {
 // @route   PUT /api/tasks/:id
 // @access  Private
 exports.updateTask = asyncHandler(async (req, res) => {
-    const task = await Todo.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true, runValidators: true }
-    );
+    const task = await Todo.findById(req.params.id);
 
     if (!task) {
         return sendError(res, 'Task not found', 404);
     }
+
+    // SECURITY FIX: Verify ownership
+    const user = await User.findById(req.user.id);
+    if (task.username.toLowerCase() !== user.username.toLowerCase()) {
+        return sendError(res, 'Not authorized to update this task', 403);
+    }
+
+    Object.assign(task, req.body);
+    await task.save();
 
     sendSuccess(res, task);
 });
@@ -63,11 +93,19 @@ exports.updateTask = asyncHandler(async (req, res) => {
 // @route   DELETE /api/tasks/:id
 // @access  Private
 exports.deleteTask = asyncHandler(async (req, res) => {
-    const task = await Todo.findByIdAndDelete(req.params.id);
+    const task = await Todo.findById(req.params.id);
 
     if (!task) {
         return sendError(res, 'Task not found', 404);
     }
+
+    // SECURITY FIX: Verify ownership
+    const user = await User.findById(req.user.id);
+    if (task.username.toLowerCase() !== user.username.toLowerCase()) {
+        return sendError(res, 'Not authorized to delete this task', 403);
+    }
+
+    await task.deleteOne();
 
     sendSuccess(res, { message: 'Task deleted successfully' });
 });
@@ -99,6 +137,12 @@ exports.reorderTasks = asyncHandler(async (req, res) => {
 // @access  Private
 exports.clearCompleted = asyncHandler(async (req, res) => {
     const { username } = req.params;
+
+    // SECURITY FIX: Verify identity
+    const user = await User.findById(req.user.id);
+    if (!user || user.username.toLowerCase() !== username.toLowerCase()) {
+        return sendError(res, 'Not authorized to clear these tasks', 403);
+    }
 
     await Todo.deleteMany({
         username: username.toLowerCase(),

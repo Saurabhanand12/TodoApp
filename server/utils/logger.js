@@ -7,7 +7,6 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 const logger = {
     info: (...args) => {
-        if (!isProduction) console.log('[INFO]', new Date().toISOString(), ...args);
     },
     warn: (...args) => {
         if (!isProduction) console.warn('[WARN]', new Date().toISOString(), ...args);

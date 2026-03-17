@@ -52,6 +52,7 @@ exports.register = asyncHandler(async (req, res) => {
             _id: user._id,
             username: user.username,
             email: user.email,
+            token: token
         }, 201);
     } else {
         sendError(res, 'Invalid user data', 400);
@@ -62,36 +63,49 @@ exports.register = asyncHandler(async (req, res) => {
 // @route   POST /api/user/login
 // @access  Public
 exports.login = asyncHandler(async (req, res) => {
-    const { username, password } = req.body;
+    const { email, username, password } = req.body;
 
-    if (!username || !password) {
-        return sendError(res, 'Please provide username and password', 400);
+    // 1. Validate input - accept either email or username
+    const identifier = email || username;
+    if (!identifier || !password) {
+        return sendError(res, 'Please provide email/username and password', 400);
     }
 
-    // Check for user (select password because it's excluded by default if someone changed the schema or for safety)
-    const user = await User.findOne({ username: username.toLowerCase() }).select('+password');
+    // 2. Find user by email or username
+    const user = await User.findOne({
+        $or: [
+            { email: identifier.toLowerCase() },
+            { username: identifier.toLowerCase() }
+        ]
+    }).select('+password');
 
-    if (user && (await user.matchPassword(password))) {
-        const token = generateToken(user._id);
-        setTokenCookie(res, token);
-
-        sendSuccess(res, {
-            _id: user._id,
-            username: user.username,
-            email: user.email,
-        });
-    } else {
-        sendError(res, 'Invalid credentials', 401);
+    // 3. Check user & password
+    if (!user || !(await user.matchPassword(password))) {
+        return sendError(res, 'Invalid credentials', 401);
     }
+
+    // 4. Generate token
+    const token = generateToken(user._id);
+
+    // 5. Set cookie (optional)
+    setTokenCookie(res, token);
+
+    // 6. Send response
+    return sendSuccess(res, {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        token:token
+    });
 });
-
 // @desc    Logout user / clear cookie
 // @route   POST /api/user/logout
 // @access  Public
 exports.logout = (req, res) => {
-    res.cookie('auth_token', 'none', {
-        expires: new Date(Date.now() + 10 * 1000),
+    res.clearCookie('auth_token', {
         httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     });
     sendSuccess(res, { message: 'Logged out successfully' });
 };
