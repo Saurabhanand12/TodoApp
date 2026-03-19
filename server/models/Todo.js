@@ -12,7 +12,7 @@ const todoSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-        position: {
+        order: {
             type: Number,
             default: 0,
         },
@@ -39,6 +39,14 @@ const todoSchema = new mongoose.Schema(
             },
             default: 'personal',
         },
+        plan: {
+            type: String,
+            enum: {
+                values: ['my-day', 'planned', 'important', 'tasks'],
+                message: '{VALUE} is not a supported plan',
+            },
+            default: 'tasks',
+        },
     },
     {
         timestamps: true,
@@ -46,6 +54,6 @@ const todoSchema = new mongoose.Schema(
 );
 
 // Compound index for efficient per-user sorted queries
-todoSchema.index({ username: 1, position: 1 });
+todoSchema.index({ username: 1, order: 1 });
 
 module.exports = mongoose.model('Todo', todoSchema);

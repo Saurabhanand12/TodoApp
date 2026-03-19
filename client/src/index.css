@@ -68,23 +68,31 @@ textarea,
 
 /* Premium Horizontal Scrollbar for Planned View */
 .planned-scrollbar::-webkit-scrollbar {
-  height: 12px;
+  height: 6px;
 }
 
 .planned-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
-  margin: 0 4px;
+  margin: 0 8px;
 }
 
 .planned-scrollbar::-webkit-scrollbar-thumb {
   background: linear-gradient(90deg, #3b82f6, #8b5cf6);
   border-radius: 12px;
-  border: 2px solid #0a0a0a;
 }
 
 .planned-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(90deg, #60a5fa, #a78bfa);
+}
+
+/* Hide the horizontal scrollbar visually on mobile (overflow-x-hidden), show only on md+ */
+.planned-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+.planned-scrollbar-hidden {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
 /* Username Modal entrance animation */

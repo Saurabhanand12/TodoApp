@@ -11,6 +11,7 @@ import {
     Pencil,
     MessageSquare
 } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername, counts }) => {
     const displayName = username || 'User';
@@ -20,8 +21,8 @@ const Sidebar = ({ activeTab, setActiveTab, username, onEditUsername, counts }) 
         <div className="w-64 h-full text-gray-300 p-6 flex flex-col">
             {/* App Header */}
             <div className="flex items-center gap-3 mb-10 px-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/20">
-                    <User size={20} />
+                <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-lg shadow-blue-900/30 ring-1 ring-white/10">
+                    <img src={logo} alt="TodoDolt Logo" className="w-full h-full object-cover" />
                 </div>
                 <div>
                     <h2 className="text-white font-bold text-3xl italic">TodoDolt</h2>

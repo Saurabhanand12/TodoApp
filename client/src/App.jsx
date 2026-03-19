@@ -220,14 +220,15 @@ const App = () => {
   }, []);
 
   // ─── Task operations ──────────────────────────────────────────────
-  const handleAddTask = useCallback(async (text, category, date) => {
+  const handleAddTask = useCallback(async (text, category, date, plan) => {
     if (!text || !username) return;
     try {
       const res = await api.post('/api/tasks', {
         text,
         username,
         category: category || 'personal',
-        due_date: date ? new Date(date) : new Date()
+        due_date: date ? new Date(date) : new Date(),
+        plan: plan || 'tasks',
       });
       if (res.data && res.data._id) {
         safeSetTasks(prev => [res.data, ...prev]);
@@ -454,7 +455,7 @@ const App = () => {
         return t.category === targetTask.category || (!t.category && targetTask.category === 'personal');
       });
 
-      columnTasks.sort((a, b) => (a.position || 0) - (b.position || 0));
+      columnTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
       columnTasks = columnTasks.filter(t => t._id !== draggedTask._id);
 
       const targetIndex = columnTasks.findIndex(t => t._id === targetTask._id);
@@ -466,14 +467,15 @@ const App = () => {
 
       columnTasks.splice(targetIndex, 0, updatedTask);
 
-      const updates = columnTasks.map((t, index) => ({ _id: t._id, position: index }));
+      const updates = columnTasks.map((t, index) => ({ _id: t._id, order: index }));
 
+      // Optimistic UI update
       setTasks(prev => prev.map(p => {
         const update = updates.find(u => u._id === p._id);
         if (update) {
           return {
             ...p,
-            position: update.position,
+            order: update.order,
             due_date: p._id === draggedTask._id ? updatedTask.due_date : p.due_date,
             category: p._id === draggedTask._id ? updatedTask.category : p.category
           };
@@ -482,7 +484,15 @@ const App = () => {
       }));
 
       try {
+        // Persist new order to database
         await api.put('/api/tasks/reorder/bulk', { tasks: updates });
+
+        // If the dragged task also moved to a different date/category, persist that too
+        if (groupByDate && draggedTask.due_date !== updatedTask.due_date) {
+          await api.put(`/api/tasks/${draggedTask._id}`, { due_date: updatedTask.due_date });
+        } else if (!groupByDate && draggedTask.category !== updatedTask.category) {
+          await api.put(`/api/tasks/${draggedTask._id}`, { category: updatedTask.category });
+        }
       } catch (err) {
         logger.error('Failed to save manual order:', err);
         if (username) fetchTasks(username);
@@ -512,7 +522,7 @@ const App = () => {
       const dateA = normalizeDate(a.due_date);
       const dateB = normalizeDate(b.due_date);
       if (dateA !== dateB) return dateA - dateB;
-      return (a.position || 0) - (b.position || 0);
+      return (a.order || 0) - (b.order || 0);
     });
   }, [tasks]);
 
@@ -633,8 +643,8 @@ const App = () => {
                         <DayColumn
                           title=""
                           date=""
-                          tasks={[...myDayFilteredTasks].sort((a, b) => (a.position || 0) - (b.position || 0))}
-                          onAddTask={(text, category) => { if (text) handleAddTask(text, category, today); }}
+                          tasks={[...myDayFilteredTasks].sort((a, b) => (a.order || 0) - (b.order || 0))}
+                          onAddTask={(text, category) => { if (text) handleAddTask(text, category, today, 'my-day'); }}
                           onToggleComplete={toggleComplete}
                           onToggleImportant={toggleImportant}
                           onDelete={deleteTodo}
@@ -648,11 +658,11 @@ const App = () => {
 
                   {/* PLANNED VIEW */}
                   {activeTab === 'planned' && (
-                    <div className="flex flex-col h-full w-full">
+                    <div className="flex flex-col h-full w-full overflow-hidden">
 
                       {/* Delete Completed Button for Planned View */}
                       {tasks.some(t => t.completed) && (
-                        <div className="flex justify-end mb-4 pr-6 pt-4">
+                        <div className="flex justify-end mb-4 pr-6 pt-4 flex-shrink-0">
                           <button
                             onClick={handleDeleteCompleted}
                             className="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-500/20 flex items-center gap-2"
@@ -662,28 +672,31 @@ const App = () => {
                         </div>
                       )}
 
-                      <div className="flex flex-col md:flex-row gap-6 overflow-x-hidden md:overflow-x-auto planned-scrollbar pb-4 px-2">
-                        {[...Array(7)].map((_, index) => {
-                          const date = new Date();
-                          date.setDate(today.getDate() + index);
-                          const dateString = date.toLocaleDateString('en-US', { weekday: 'long' });
-                          let title = dateString;
-                          if (index === 0) title = 'Today';
-                          if (index === 1) title = 'Tomorrow';
-                          return (
-                            <DayColumn
-                              key={index}
-                              title={title}
-                              date={title !== dateString ? dateString : ''}
-                              tasks={getDayTasks(index)}
-                              onAddTask={(text, category) => { if (text) handleAddTask(text, category, date); }}
-                              onToggleComplete={toggleComplete}
-                              onToggleImportant={toggleImportant}
-                              onDelete={deleteTodo}
-                              onUpdateTask={handleUpdateTask}
-                            />
-                          );
-                        })}
+                      {/* Scrollable columns row — scrollbar pinned here, at bottom of this row */}
+                      <div className="flex-1 overflow-hidden flex flex-col">
+                        <div className="flex-1 flex flex-row gap-6 overflow-x-auto overflow-y-hidden planned-scrollbar px-2 pb-2">
+                          {[...Array(7)].map((_, index) => {
+                            const date = new Date();
+                            date.setDate(today.getDate() + index);
+                            const dateString = date.toLocaleDateString('en-US', { weekday: 'long' });
+                            let title = dateString;
+                            if (index === 0) title = 'Today';
+                            if (index === 1) title = 'Tomorrow';
+                            return (
+                              <DayColumn
+                                key={index}
+                                title={title}
+                                date={title !== dateString ? dateString : ''}
+                                tasks={getDayTasks(index)}
+                                onAddTask={(text, category) => { if (text) handleAddTask(text, category, date, 'planned'); }}
+                                onToggleComplete={toggleComplete}
+                                onToggleImportant={toggleImportant}
+                                onDelete={deleteTodo}
+                                onUpdateTask={handleUpdateTask}
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}

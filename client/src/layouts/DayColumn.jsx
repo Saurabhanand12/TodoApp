@@ -61,7 +61,7 @@ const DayColumn = ({ id, title, date, tasks, onAddTask, onToggleComplete, onTogg
                 <SortableContext items={tasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
                     {tasks.sort((a, b) => {
                         if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                        return (a.position || 0) - (b.position || 0);
+                        return (a.order || 0) - (b.order || 0);
                     }).map(task => (
                         <TaskCard
                             key={task._id}
