@@ -1,0 +1,5 @@
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[STARTUP ERROR] Missing required environment variable: MONGODB_URI. Set it in the Vercel dashboard.
+[STARTUP ERROR] Missing required environment variable: JWT_SECRET. Set it in the Vercel dashboard.
+[INFO] 2026-03-17T06:22:10.999Z Server running on http://localhost:5000

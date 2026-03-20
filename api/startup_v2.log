@@ -1,0 +1,5 @@
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[STARTUP ERROR] Missing required environment variable: MONGODB_URI. Set it in the Vercel dashboard.
+[STARTUP ERROR] Missing required environment variable: JWT_SECRET. Set it in the Vercel dashboard.
+[INFO] 2026-03-17T06:20:41.914Z Server running on http://localhost:5000
