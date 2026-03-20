@@ -3,7 +3,8 @@ import axios from 'axios';
 const getBaseURL = () => {
   // In production, force all API calls to the current domain's /api route
   if (import.meta.env.PROD) {
-    return '/'; // RELATIVE TO DOMAIN
+    // Explicitly point to the working backend domain
+    return 'https://todo-app-rosy-eta-61.vercel.app';
   }
 
   let envURL = import.meta.env.VITE_API_URL;

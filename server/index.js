@@ -13,16 +13,15 @@ const cookieParser = require('cookie-parser');
 // responses — including startup-error 500s — carry the correct CORS headers.
 const FRONTEND_URL =
     process.env.FRONTEND_URL ||
-    'https://todo-app-rosy-eta-61.vercel.app';
+    'https://todo-app-twq2.vercel.app';
 
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
-    FRONTEND_URL,
     'https://todo-app-twq2.vercel.app',
-    'https://todo-app-twq2-k4qwqa3k2-saurabh-anand-s-projects-3b82a62b.vercel.app',
     'https://todo-app-rosy-eta-61.vercel.app',
+    'https://todo-app-twq2-k4qwqa3k2-saurabh-anand-s-projects-3b82a62b.vercel.app',
 ];
 
 const corsOptions = {
