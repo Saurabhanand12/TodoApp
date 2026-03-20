@@ -109,15 +109,18 @@ app.use((req, res, next) => {
     next();
 });
 
-// ─── Rate Limiting ───────────────────────────────────────────────────────────
+// ─── Rate Limiting & Routes ──────────────────────────────────────────────────
+
+const apiRouter = express.Router();
 
 // General rate limiter on all API routes (login has its own stricter limiter)
-app.use('/api', generalRateLimiter);
+apiRouter.use(generalRateLimiter);
 
 // ─── Database Connection ─────────────────────────────────────────────────────
 
 // Ensure DB is connected before every request (critical for Vercel serverless)
-app.use(async (req, res, next) => {
+// Applying to the router so health checks and routes are all protected
+apiRouter.use(async (req, res, next) => {
     try {
         await dbConnect();
         next();
@@ -127,20 +130,29 @@ app.use(async (req, res, next) => {
     }
 });
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
+// ─── API Endpoints ───────────────────────────────────────────────────────────
 
-app.use('/api/user', require('./routes/users'));
-app.use('/api/tasks', require('./routes/tasks'));
-app.use('/api/feedback', require('./routes/feedback'));
+apiRouter.use('/user', require('./routes/users'));
+apiRouter.use('/tasks', require('./routes/tasks'));
+apiRouter.use('/feedback', require('./routes/feedback'));
 
 // Health check
-app.get('/api/health', (req, res) => {
+apiRouter.get('/health', (req, res) => {
     res.json({ success: true, message: 'Todo API is healthy!', timestamp: new Date() });
 });
 
-app.get('/', (req, res) => {
-    res.json({ success: true, message: 'Todo API is running!', version: '2.0.0' });
+// Root of API
+apiRouter.get('/', (req, res) => {
+    res.json({ success: true, message: 'Todo API is running!', version: '2.0.1' });
 });
+
+// ─── Mounting ────────────────────────────────────────────────────────────────
+
+// Mount the router under BOTH /api and / 
+// This addresses the common Vercel issue where the /api prefix might be stripped 
+// before the request reaches the serverless function, causing 404s.
+app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // 404 handler for unknown routes
 app.use((req, res) => {
