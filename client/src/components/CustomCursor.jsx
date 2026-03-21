@@ -13,12 +13,16 @@ const CustomCursor = () => {
 
     React.useEffect(() => {
         const checkTouch = () => {
-            setIsTouchDevice(window.matchMedia('(pointer: coarse)').matches);
+            const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+            const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const isSmallScreen = window.innerWidth < 1024;
+            setIsTouchDevice(isCoarse || hasTouch || isSmallScreen);
         };
         checkTouch();
+        window.addEventListener('resize', checkTouch);
         
         const moveCursor = (e) => {
-            if (window.matchMedia('(pointer: coarse)').matches) return;
+            if (isTouchDevice) return;
             cursorX.set(e.clientX);
             cursorY.set(e.clientY);
             if (!isVisible) setIsVisible(true);
@@ -49,6 +53,7 @@ const CustomCursor = () => {
         document.addEventListener('mouseenter', handleMouseEnter);
 
         return () => {
+            window.removeEventListener('resize', checkTouch);
             window.removeEventListener('mousemove', moveCursor);
             window.removeEventListener('mouseover', updateHoverState);
             window.removeEventListener('mousedown', updateHoverState);
@@ -56,7 +61,7 @@ const CustomCursor = () => {
             document.removeEventListener('mouseleave', handleMouseLeave);
             document.removeEventListener('mouseenter', handleMouseEnter);
         };
-    }, [isVisible, cursorX, cursorY]);
+    }, [isVisible, cursorX, cursorY, isTouchDevice]);
 
     if (isTouchDevice || !isVisible) return null;
 
