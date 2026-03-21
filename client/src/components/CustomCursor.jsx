@@ -9,8 +9,16 @@ const CustomCursor = () => {
     const cursorX = useMotionValue(-100);
     const cursorY = useMotionValue(-100);
 
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
+
     React.useEffect(() => {
+        const checkTouch = () => {
+            setIsTouchDevice(window.matchMedia('(pointer: coarse)').matches);
+        };
+        checkTouch();
+        
         const moveCursor = (e) => {
+            if (window.matchMedia('(pointer: coarse)').matches) return;
             cursorX.set(e.clientX);
             cursorY.set(e.clientY);
             if (!isVisible) setIsVisible(true);
@@ -50,7 +58,7 @@ const CustomCursor = () => {
         };
     }, [isVisible, cursorX, cursorY]);
 
-    if (!isVisible) return null;
+    if (isTouchDevice || !isVisible) return null;
 
     return (
         <motion.div
