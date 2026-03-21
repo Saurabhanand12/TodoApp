@@ -30,6 +30,41 @@ const CustomCursor = () => {
             setIsHovering(!!isClickable || !!isDraggable);
         };
 
+        const handleTouchMove = (e) => {
+            if (e.touches && e.touches[0]) {
+                const touch = e.touches[0];
+                cursorX.set(touch.clientX);
+                cursorY.set(touch.clientY);
+                if (!isVisible) setIsVisible(true);
+
+                const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                const isClickable = target?.closest('button') || target?.closest('a') || target?.closest('.cursor-pointer') || target?.closest('input');
+                const isDraggable = target?.closest('.cursor-move');
+                setIsHovering(!!isClickable || !!isDraggable);
+            }
+        };
+
+        const handleTouchStart = (e) => {
+            if (e.touches && e.touches[0]) {
+                const touch = e.touches[0];
+                cursorX.set(touch.clientX);
+                cursorY.set(touch.clientY);
+                setIsVisible(true);
+
+                const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                const isClickable = target?.closest('button') || target?.closest('a') || target?.closest('.cursor-pointer') || target?.closest('input');
+                const isDraggable = target?.closest('.cursor-move');
+                setIsHovering(!!isClickable || !!isDraggable);
+                if (isDraggable) setIsDragging(true);
+            }
+        };
+
+        const handleTouchEnd = () => {
+            setIsVisible(false);
+            setIsDragging(false);
+            setIsHovering(false);
+        };
+
         const handleMouseLeave = () => setIsVisible(false);
         const handleMouseEnter = () => setIsVisible(true);
 
@@ -37,6 +72,9 @@ const CustomCursor = () => {
         window.addEventListener('mouseover', updateHoverState);
         window.addEventListener('mousedown', updateHoverState);
         window.addEventListener('mouseup', updateHoverState);
+        window.addEventListener('touchstart', handleTouchStart, { passive: true });
+        window.addEventListener('touchmove', handleTouchMove, { passive: true });
+        window.addEventListener('touchend', handleTouchEnd);
         document.addEventListener('mouseleave', handleMouseLeave);
         document.addEventListener('mouseenter', handleMouseEnter);
 
@@ -45,6 +83,9 @@ const CustomCursor = () => {
             window.removeEventListener('mouseover', updateHoverState);
             window.removeEventListener('mousedown', updateHoverState);
             window.removeEventListener('mouseup', updateHoverState);
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
             document.removeEventListener('mouseleave', handleMouseLeave);
             document.removeEventListener('mouseenter', handleMouseEnter);
         };
