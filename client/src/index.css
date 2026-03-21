@@ -11,18 +11,29 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   background-color: #0a0a0a;
-  cursor: none;
 }
 
-a,
-button,
-[role="button"],
+@media (pointer: fine) {
+  body {
+    cursor: none;
+  }
+
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  .cursor-pointer,
+  .cursor-move {
+    cursor: none !important;
+  }
+}
+
 input,
-select,
 textarea,
-.cursor-pointer,
-.cursor-move {
-  cursor: none !important;
+select {
+  caret-color: #60a5fa !important; /* Visible bright blue caret */
 }
 
 /* Custom Scrollbar - Vertical/Global */
